@@ -1,0 +1,26 @@
+version: '3.8'
+
+# Development docker-compose - only runs the database
+# Run the app locally with npm run dev for hot reloading
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sanctum-kanban-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sanctum_kanban
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_dev:
