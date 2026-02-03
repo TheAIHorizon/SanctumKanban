@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { EditTicketDialog } from './EditTicketDialog'
-import { cn, getInitials } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { MoreHorizontal, Pencil, Trash2, GripVertical } from 'lucide-react'
 
 interface User {
@@ -54,6 +53,28 @@ interface TicketCardProps {
   isDragging?: boolean
 }
 
+// Convert hex color to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null
+}
+
+// Determine if text should be light or dark based on background
+function getContrastColor(hexColor: string): string {
+  const rgb = hexToRgb(hexColor)
+  if (!rgb) return '#000000'
+  
+  // Calculate luminance
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255
+  return luminance > 0.5 ? '#000000' : '#ffffff'
+}
+
 export function TicketCard({
   ticket,
   members,
@@ -78,11 +99,16 @@ export function TicketCard({
     disabled: !canEdit,
   })
 
-  const style = transform
-    ? {
-        transform: CSS.Translate.toString(transform),
-      }
-    : undefined
+  // Get the card background color and text color
+  const cardColor = ticket.assignee?.color || '#e5e7eb' // Gray for unassigned
+  const textColor = getContrastColor(cardColor)
+  const isLightText = textColor === '#ffffff'
+
+  const cardStyle = {
+    ...(transform ? { transform: CSS.Translate.toString(transform) } : {}),
+    backgroundColor: cardColor,
+    color: textColor,
+  }
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this ticket?')) return
@@ -109,10 +135,11 @@ export function TicketCard({
     <>
       <div
         ref={setNodeRef}
-        style={style}
+        style={cardStyle}
         className={cn(
-          'ticket-card group',
-          isDragging && 'dragging opacity-50',
+          'rounded-md p-3 shadow-sm cursor-grab active:cursor-grabbing group transition-all',
+          'hover:shadow-md hover:scale-[1.02]',
+          isDragging && 'opacity-50 rotate-3 shadow-lg',
           !canEdit && 'cursor-default'
         )}
       >
@@ -121,22 +148,28 @@ export function TicketCard({
             <div
               {...attributes}
               {...listeners}
-              className="mt-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+              className={cn(
+                "mt-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-70 transition-opacity",
+                isLightText ? "text-white/70" : "text-black/50"
+              )}
             >
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <GripVertical className="h-4 w-4" />
             </div>
           )}
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <h4 className="text-sm font-medium leading-tight">{ticket.title}</h4>
+              <h4 className="text-sm font-semibold leading-tight">{ticket.title}</h4>
               {(canEdit || canDelete) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className={cn(
+                        "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
+                        isLightText ? "hover:bg-white/20 text-white" : "hover:bg-black/10 text-black"
+                      )}
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
@@ -164,37 +197,24 @@ export function TicketCard({
             </div>
 
             {ticket.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              <p className={cn(
+                "text-xs mt-1 line-clamp-2",
+                isLightText ? "text-white/80" : "text-black/70"
+              )}>
                 {ticket.description}
               </p>
             )}
 
-            {ticket.assignee && (
-              <div className="flex items-center gap-2 mt-2">
-                <Avatar className="h-5 w-5">
-                  <AvatarFallback
-                    style={{ backgroundColor: ticket.assignee.color }}
-                    className="text-white text-[10px]"
-                  >
-                    {getInitials(
-                      ticket.assignee.firstName,
-                      ticket.assignee.lastName
-                    )}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-muted-foreground">
-                  {ticket.assignee.firstName} {ticket.assignee.lastName}
-                </span>
-              </div>
-            )}
+            <p className={cn(
+              "text-xs font-medium mt-2",
+              isLightText ? "text-white/90" : "text-black/80"
+            )}>
+              {ticket.assignee 
+                ? `${ticket.assignee.firstName} ${ticket.assignee.lastName}`
+                : 'Unassigned'
+              }
+            </p>
           </div>
-
-          {ticket.assignee && (
-            <div
-              className="w-1 h-full absolute left-0 top-0 rounded-l-md"
-              style={{ backgroundColor: ticket.assignee.color }}
-            />
-          )}
         </div>
       </div>
 

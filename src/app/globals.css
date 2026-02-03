@@ -98,18 +98,3 @@
   min-height: 200px;
   @apply bg-muted/50 rounded-lg p-2;
 }
-
-/* Ticket card styles */
-.ticket-card {
-  @apply bg-card border rounded-md p-3 shadow-sm cursor-grab active:cursor-grabbing;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.ticket-card:hover {
-  @apply shadow-md;
-}
-
-.ticket-card.dragging {
-  @apply shadow-lg opacity-90;
-  transform: rotate(3deg);
-}
