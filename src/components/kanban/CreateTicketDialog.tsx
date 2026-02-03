@@ -20,7 +20,51 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Bug, Lightbulb, CheckSquare, FileText, Zap } from 'lucide-react'
+
+// Ticket templates
+const TICKET_TEMPLATES = [
+  {
+    id: 'blank',
+    name: 'Blank',
+    icon: FileText,
+    title: '',
+    description: '',
+    color: '#6b7280',
+  },
+  {
+    id: 'bug',
+    name: 'Bug',
+    icon: Bug,
+    title: '[Bug] ',
+    description: '**Steps to reproduce:**\n1. \n2. \n3. \n\n**Expected behavior:**\n\n**Actual behavior:**\n',
+    color: '#ef4444',
+  },
+  {
+    id: 'feature',
+    name: 'Feature',
+    icon: Lightbulb,
+    title: '[Feature] ',
+    description: '**Problem:**\n\n**Proposed solution:**\n\n**Acceptance criteria:**\n- [ ] \n',
+    color: '#8b5cf6',
+  },
+  {
+    id: 'task',
+    name: 'Task',
+    icon: CheckSquare,
+    title: '[Task] ',
+    description: '**Objective:**\n\n**Steps:**\n- [ ] \n- [ ] \n',
+    color: '#3b82f6',
+  },
+  {
+    id: 'improvement',
+    name: 'Improvement',
+    icon: Zap,
+    title: '[Improvement] ',
+    description: '**Current state:**\n\n**Desired improvement:**\n\n**Benefits:**\n',
+    color: '#f59e0b',
+  },
+]
 
 interface User {
   id: string
@@ -71,6 +115,7 @@ export function CreateTicketDialog({
   tags = [],
   onTicketCreated,
 }: CreateTicketDialogProps) {
+  const [selectedTemplate, setSelectedTemplate] = useState('blank')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [assigneeId, setAssigneeId] = useState<string>('')
@@ -78,6 +123,15 @@ export function CreateTicketDialog({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const applyTemplate = (templateId: string) => {
+    const template = TICKET_TEMPLATES.find((t) => t.id === templateId)
+    if (template) {
+      setSelectedTemplate(templateId)
+      setTitle(template.title)
+      setDescription(template.description)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -116,6 +170,7 @@ export function CreateTicketDialog({
   }
 
   const resetForm = () => {
+    setSelectedTemplate('blank')
     setTitle('')
     setDescription('')
     setAssigneeId('')
@@ -148,6 +203,46 @@ export function CreateTicketDialog({
               {error}
             </div>
           )}
+
+          {/* Template Selector */}
+          <div className="space-y-2">
+            <Label>Template</Label>
+            <div className="flex flex-wrap gap-2">
+              {TICKET_TEMPLATES.map((template) => {
+                const Icon = template.icon
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => applyTemplate(template.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border transition-all ${
+                      selectedTemplate === template.id
+                        ? 'ring-2 ring-offset-1 border-primary'
+                        : 'border-muted hover:border-muted-foreground/50'
+                    }`}
+                    style={{
+                      backgroundColor:
+                        selectedTemplate === template.id
+                          ? template.color + '20'
+                          : 'transparent',
+                    }}
+                    disabled={loading}
+                  >
+                    <Icon
+                      className="h-4 w-4"
+                      style={{
+                        color:
+                          selectedTemplate === template.id
+                            ? template.color
+                            : 'currentColor',
+                      }}
+                    />
+                    {template.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>

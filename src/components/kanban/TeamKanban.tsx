@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { KanbanBoard } from './KanbanBoard'
 import { ReflectionBoard } from '@/components/reflection/ReflectionBoard'
 import { CreateTicketDialog } from './CreateTicketDialog'
-import { Users, Plus, ChevronDown, ChevronUp, LayoutGrid, MessageSquare, Minimize2, Maximize2 } from 'lucide-react'
+import { FilterBar, FilterState, defaultFilters } from './FilterBar'
+import { Users, Plus, ChevronDown, ChevronUp, LayoutGrid, MessageSquare, Minimize2, Maximize2, Keyboard } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { KeyboardShortcutsHelp } from '@/components/keyboard/KeyboardShortcutsHelp'
 
 interface User {
   id: string
@@ -85,8 +87,103 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [tickets, setTickets] = useState(team.tickets)
   const [compactView, setCompactView] = useState(true) // Default to compact
+  const [filters, setFilters] = useState<FilterState>(defaultFilters)
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const canCreateTickets = isTeamLead || currentUser.role === 'ADMIN'
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger when typing in inputs
+      const target = e.target as HTMLElement
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+
+      // Escape always works
+      if (e.key === 'Escape') {
+        setCreateDialogOpen(false)
+        setShortcutsHelpOpen(false)
+        // Clear search
+        if (filters.search) {
+          setFilters((prev) => ({ ...prev, search: '' }))
+        }
+        return
+      }
+
+      // Other shortcuts don't work in inputs
+      if (isInput) return
+
+      switch (e.key.toLowerCase()) {
+        case 'n':
+          if (canCreateTickets) {
+            e.preventDefault()
+            setCreateDialogOpen(true)
+          }
+          break
+        case '?':
+          e.preventDefault()
+          setShortcutsHelpOpen(true)
+          break
+        case '/':
+          e.preventDefault()
+          // Focus the search input in FilterBar
+          const searchInput = document.querySelector('[data-search-input]') as HTMLInputElement
+          searchInput?.focus()
+          break
+        case 'm':
+          e.preventDefault()
+          setFilters((prev) => ({ ...prev, myTicketsOnly: !prev.myTicketsOnly }))
+          break
+        case 'e':
+          e.preventDefault()
+          setCompactView((prev) => !prev)
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [canCreateTickets, filters.search])
+
+  // Filter tickets based on current filters
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((ticket) => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase()
+        const titleMatch = ticket.title.toLowerCase().includes(searchLower)
+        const descMatch = ticket.description?.toLowerCase().includes(searchLower)
+        if (!titleMatch && !descMatch) return false
+      }
+
+      // My tickets only
+      if (filters.myTicketsOnly && ticket.assignee?.id !== currentUser.id) {
+        return false
+      }
+
+      // Assignee filter
+      if (filters.assigneeId) {
+        if (filters.assigneeId === 'unassigned') {
+          if (ticket.assignee) return false
+        } else {
+          if (ticket.assignee?.id !== filters.assigneeId) return false
+        }
+      }
+
+      // Tags filter (ticket must have at least one of the selected tags)
+      if (filters.tagIds.length > 0) {
+        const ticketTagIds = ticket.tags?.map((t) => t.tag.id) || []
+        const hasMatchingTag = filters.tagIds.some((id) => ticketTagIds.includes(id))
+        if (!hasMatchingTag) return false
+      }
+
+      return true
+    })
+  }, [tickets, filters, currentUser.id])
 
   const handleTicketCreated = (newTicket: Ticket) => {
     setTickets((prev) => [...prev, newTicket])
@@ -118,9 +215,18 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => setShortcutsHelpOpen(true)}
+              className="text-muted-foreground"
+              title="Keyboard shortcuts (?)"
+            >
+              <Keyboard className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setCompactView(!compactView)}
               className="text-muted-foreground"
-              title={compactView ? 'Expand tickets' : 'Compact view'}
+              title={compactView ? 'Expand tickets (E)' : 'Compact view (E)'}
             >
               {compactView ? (
                 <Maximize2 className="h-4 w-4" />
@@ -143,7 +249,7 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
               )}
             </Button>
             {canCreateTickets && (
-              <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+              <Button size="sm" onClick={() => setCreateDialogOpen(true)} title="Add Ticket (N)">
                 <Plus className="h-4 w-4 mr-1" />
                 Add Ticket
               </Button>
@@ -192,14 +298,22 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
           </TabsList>
 
           <TabsContent value="kanban" className="mt-0">
+            <FilterBar
+              members={team.members}
+              tags={team.tags || []}
+              currentUserId={currentUser.id}
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
             <KanbanBoard
               teamId={team.id}
-              tickets={tickets}
+              tickets={filteredTickets}
               members={team.members}
               tags={team.tags || []}
               currentUser={currentUser}
               isTeamLead={isTeamLead}
               compactView={compactView}
+              hideColumns={filters.hideColumns}
               onTicketUpdated={handleTicketUpdated}
               onTicketDeleted={handleTicketDeleted}
             />
@@ -222,6 +336,11 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
         members={team.members}
         tags={team.tags || []}
         onTicketCreated={handleTicketCreated}
+      />
+
+      <KeyboardShortcutsHelp
+        open={shortcutsHelpOpen}
+        onOpenChange={setShortcutsHelpOpen}
       />
     </Card>
   )

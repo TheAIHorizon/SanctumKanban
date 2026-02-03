@@ -52,6 +52,12 @@ interface CurrentUser {
   role: string
 }
 
+interface HideColumns {
+  BACKLOG: boolean
+  DOING: boolean
+  DONE: boolean
+}
+
 interface KanbanBoardProps {
   teamId: string
   tickets: Ticket[]
@@ -60,6 +66,7 @@ interface KanbanBoardProps {
   currentUser: CurrentUser
   isTeamLead: boolean
   compactView?: boolean
+  hideColumns?: HideColumns
   onTicketUpdated: (ticket: Ticket) => void
   onTicketDeleted: (ticketId: string) => void
 }
@@ -70,6 +77,12 @@ const COLUMNS = [
   { id: 'DONE', title: 'Done', color: 'bg-green-500' },
 ] as const
 
+const defaultHideColumns: HideColumns = {
+  BACKLOG: false,
+  DOING: false,
+  DONE: false,
+}
+
 export function KanbanBoard({
   teamId,
   tickets,
@@ -78,6 +91,7 @@ export function KanbanBoard({
   currentUser,
   isTeamLead,
   compactView = true,
+  hideColumns = defaultHideColumns,
   onTicketUpdated,
   onTicketDeleted,
 }: KanbanBoardProps) {
@@ -147,6 +161,9 @@ export function KanbanBoard({
       .sort((a, b) => a.position - b.position)
   }
 
+  const visibleColumns = COLUMNS.filter((col) => !hideColumns[col.id])
+  const gridCols = visibleColumns.length === 3 ? 'grid-cols-3' : visibleColumns.length === 2 ? 'grid-cols-2' : 'grid-cols-1'
+
   return (
     <DndContext
       sensors={sensors}
@@ -154,8 +171,8 @@ export function KanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-3 gap-4">
-        {COLUMNS.map((column) => (
+      <div className={`grid ${gridCols} gap-4`}>
+        {visibleColumns.map((column) => (
           <KanbanColumn
             key={column.id}
             id={column.id}

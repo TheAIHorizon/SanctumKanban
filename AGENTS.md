@@ -226,6 +226,54 @@ Uses `next-themes` for theme management:
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
 ```
 
+### Heat Map Overview
+
+Bird's eye view showing all teams as compact mini-kanbans:
+- Toggle between "Detailed" and "Overview" modes in `TeamGrid.tsx`
+- Each team shows tickets as small colored squares (assignee color)
+- Health indicator: 🟢 Healthy, 🟡 Backlogged, 🔴 Needs attention
+- Participation bar shows workload distribution by color
+- Click team to drill down, "Back to Overview" to return
+
+See `src/components/dashboard/HeatMapView.tsx`
+
+### Search & Filter
+
+Filter bar in each team's kanban (`FilterBar.tsx`):
+- Search by ticket title/description
+- Filter by assignee (including "unassigned")
+- Filter by tags (multi-select)
+- "My Tickets" toggle
+- Show/hide columns (Backlog, Doing, Done)
+
+Filters are managed in `TeamKanban.tsx` state and passed to `KanbanBoard.tsx`.
+
+### Keyboard Shortcuts
+
+Global shortcuts handled in `TeamKanban.tsx` useEffect:
+
+| Key | Action |
+|-----|--------|
+| `N` | Create new ticket |
+| `?` | Show shortcuts help |
+| `/` | Focus search input |
+| `M` | Toggle "My Tickets" filter |
+| `E` | Toggle compact/expanded view |
+| `Esc` | Close dialogs, clear search |
+
+Help dialog: `src/components/keyboard/KeyboardShortcutsHelp.tsx`
+
+### Ticket Templates
+
+Pre-defined ticket formats in `CreateTicketDialog.tsx`:
+- **Blank**: Empty form
+- **Bug**: Steps to reproduce format
+- **Feature**: Problem/solution/acceptance criteria
+- **Task**: Objective/steps checklist
+- **Improvement**: Current state/desired improvement
+
+Templates pre-fill title prefix and description structure.
+
 ## Common Tasks
 
 ### Adding a New API Route
@@ -320,7 +368,13 @@ docker-compose -f docker-compose.app.yml up -d --build
 | `src/middleware.ts` | Route protection rules |
 | `src/app/(dashboard)/page.tsx` | Main dashboard |
 | `src/app/(dashboard)/admin/tags/page.tsx` | Tag management (admin) |
+| `src/components/dashboard/TeamGrid.tsx` | View mode toggle (Detailed/Overview) |
+| `src/components/dashboard/HeatMapView.tsx` | Bird's eye heat map view |
+| `src/components/kanban/TeamKanban.tsx` | Team container, filters, keyboard shortcuts |
+| `src/components/kanban/FilterBar.tsx` | Search and filter controls |
 | `src/components/kanban/TicketCard.tsx` | Ticket rendering (color-coded, tags, due dates) |
-| `src/components/kanban/KanbanBoard.tsx` | Drag-drop logic |
+| `src/components/kanban/KanbanBoard.tsx` | Drag-drop logic, column visibility |
+| `src/components/kanban/CreateTicketDialog.tsx` | Ticket creation with templates |
 | `src/components/kanban/EditTicketDialog.tsx` | Ticket editing with comments |
+| `src/components/keyboard/KeyboardShortcutsHelp.tsx` | Shortcuts help dialog |
 | `src/components/theme-toggle.tsx` | Dark mode toggle |
