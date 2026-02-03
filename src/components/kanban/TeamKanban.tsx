@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { KanbanBoard } from './KanbanBoard'
 import { ReflectionBoard } from '@/components/reflection/ReflectionBoard'
 import { CreateTicketDialog } from './CreateTicketDialog'
-import { Users, Plus, ChevronDown, ChevronUp, LayoutGrid, MessageSquare } from 'lucide-react'
+import { Users, Plus, ChevronDown, ChevronUp, LayoutGrid, MessageSquare, Minimize2, Maximize2 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -70,6 +70,7 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
   const [showMembers, setShowMembers] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [tickets, setTickets] = useState(team.tickets)
+  const [compactView, setCompactView] = useState(true) // Default to compact
 
   const canCreateTickets = isTeamLead || currentUser.role === 'ADMIN'
 
@@ -100,6 +101,19 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCompactView(!compactView)}
+              className="text-muted-foreground"
+              title={compactView ? 'Expand tickets' : 'Compact view'}
+            >
+              {compactView ? (
+                <Maximize2 className="h-4 w-4" />
+              ) : (
+                <Minimize2 className="h-4 w-4" />
+              )}
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -170,6 +184,7 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
               members={team.members}
               currentUser={currentUser}
               isTeamLead={isTeamLead}
+              compactView={compactView}
               onTicketUpdated={handleTicketUpdated}
               onTicketDeleted={handleTicketDeleted}
             />

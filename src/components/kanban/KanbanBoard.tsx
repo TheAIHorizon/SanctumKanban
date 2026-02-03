@@ -49,6 +49,7 @@ interface KanbanBoardProps {
   members: TeamMember[]
   currentUser: CurrentUser
   isTeamLead: boolean
+  compactView?: boolean
   onTicketUpdated: (ticket: Ticket) => void
   onTicketDeleted: (ticketId: string) => void
 }
@@ -65,6 +66,7 @@ export function KanbanBoard({
   members,
   currentUser,
   isTeamLead,
+  compactView = true,
   onTicketUpdated,
   onTicketDeleted,
 }: KanbanBoardProps) {
@@ -152,6 +154,7 @@ export function KanbanBoard({
             members={members}
             currentUser={currentUser}
             isTeamLead={isTeamLead}
+            compactView={compactView}
             onTicketUpdated={onTicketUpdated}
             onTicketDeleted={onTicketDeleted}
           />
@@ -165,6 +168,7 @@ export function KanbanBoard({
             members={members}
             currentUser={currentUser}
             isTeamLead={isTeamLead}
+            compactView={compactView}
             onTicketUpdated={onTicketUpdated}
             onTicketDeleted={onTicketDeleted}
             isDragging

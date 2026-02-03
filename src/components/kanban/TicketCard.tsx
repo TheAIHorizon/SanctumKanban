@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { EditTicketDialog } from './EditTicketDialog'
 import { cn } from '@/lib/utils'
-import { MoreHorizontal, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface User {
   id: string
@@ -48,6 +48,7 @@ interface TicketCardProps {
   members: TeamMember[]
   currentUser: CurrentUser
   isTeamLead: boolean
+  compactView?: boolean
   onTicketUpdated: (ticket: Ticket) => void
   onTicketDeleted: (ticketId: string) => void
   isDragging?: boolean
@@ -80,12 +81,17 @@ export function TicketCard({
   members,
   currentUser,
   isTeamLead,
+  compactView = true,
   onTicketUpdated,
   onTicketDeleted,
   isDragging = false,
 }: TicketCardProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  // Show expanded view if not in compact mode OR if user expanded this card
+  const showExpanded = !compactView || isExpanded
 
   const canEdit =
     currentUser.role === 'ADMIN' ||
@@ -131,16 +137,31 @@ export function TicketCard({
     }
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't toggle if clicking on dropdown or drag handle
+    if ((e.target as HTMLElement).closest('button, [data-drag-handle]')) {
+      return
+    }
+    if (compactView) {
+      setIsExpanded(!isExpanded)
+    }
+  }
+
   return (
     <>
       <div
         ref={setNodeRef}
         style={cardStyle}
+        onClick={handleCardClick}
         className={cn(
-          'rounded-md p-3 shadow-sm cursor-grab active:cursor-grabbing group transition-all',
-          'hover:shadow-md hover:scale-[1.02]',
+          'rounded-md shadow-sm group transition-all',
+          compactView ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+          'hover:shadow-md',
+          !showExpanded && 'hover:scale-[1.01]',
+          showExpanded && 'hover:scale-[1.02]',
           isDragging && 'opacity-50 rotate-3 shadow-lg',
-          !canEdit && 'cursor-default'
+          !canEdit && 'cursor-default',
+          showExpanded ? 'p-3' : 'px-3 py-2'
         )}
       >
         <div className="flex items-start gap-2">
@@ -148,8 +169,10 @@ export function TicketCard({
             <div
               {...attributes}
               {...listeners}
+              data-drag-handle
               className={cn(
-                "mt-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-70 transition-opacity",
+                "cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-70 transition-opacity",
+                showExpanded ? "mt-0.5" : "mt-0",
                 isLightText ? "text-white/70" : "text-black/50"
               )}
             >
@@ -159,61 +182,100 @@ export function TicketCard({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <h4 className="text-sm font-semibold leading-tight">{ticket.title}</h4>
-              {(canEdit || canDelete) && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        "h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity",
-                        isLightText ? "hover:bg-white/20 text-white" : "hover:bg-black/10 text-black"
-                      )}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {canEdit && (
-                      <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
+              <div className="flex-1 min-w-0">
+                <h4 className={cn(
+                  "font-semibold leading-tight",
+                  showExpanded ? "text-sm" : "text-xs truncate"
+                )}>
+                  {ticket.title}
+                </h4>
+                {!showExpanded && ticket.assignee && (
+                  <span className={cn(
+                    "text-[10px]",
+                    isLightText ? "text-white/70" : "text-black/60"
+                  )}>
+                    {ticket.assignee.firstName} {ticket.assignee.lastName[0]}.
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {compactView && (ticket.description || ticket.assignee) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsExpanded(!isExpanded)
+                    }}
+                    className={cn(
+                      "h-5 w-5 flex items-center justify-center rounded opacity-60 hover:opacity-100 transition-opacity",
+                      isLightText ? "hover:bg-white/20" : "hover:bg-black/10"
                     )}
-                    {canDelete && (
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={handleDelete}
-                        disabled={isDeleting}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </button>
+                )}
+                {(canEdit || canDelete) && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity",
+                          isLightText ? "hover:bg-white/20 text-white" : "hover:bg-black/10 text-black"
+                        )}
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+                        <MoreHorizontal className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {canEdit && (
+                        <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && (
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
 
-            {ticket.description && (
-              <p className={cn(
-                "text-xs mt-1 line-clamp-2",
-                isLightText ? "text-white/80" : "text-black/70"
-              )}>
-                {ticket.description}
-              </p>
-            )}
+            {showExpanded && (
+              <>
+                {ticket.description && (
+                  <p className={cn(
+                    "text-xs mt-1 line-clamp-2",
+                    isLightText ? "text-white/80" : "text-black/70"
+                  )}>
+                    {ticket.description}
+                  </p>
+                )}
 
-            <p className={cn(
-              "text-xs font-medium mt-2",
-              isLightText ? "text-white/90" : "text-black/80"
-            )}>
-              {ticket.assignee 
-                ? `${ticket.assignee.firstName} ${ticket.assignee.lastName}`
-                : 'Unassigned'
-              }
-            </p>
+                <p className={cn(
+                  "text-xs font-medium mt-2",
+                  isLightText ? "text-white/90" : "text-black/80"
+                )}>
+                  {ticket.assignee 
+                    ? `${ticket.assignee.firstName} ${ticket.assignee.lastName}`
+                    : 'Unassigned'
+                  }
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
