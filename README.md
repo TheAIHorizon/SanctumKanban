@@ -85,33 +85,57 @@ A self-hosted, real-time multi-team kanban application with announcements, drag-
 6. **Open** http://localhost:3456 and login with:
    - Admin: `admin@example.com` / `admin123`
 
-### Production Deployment (Docker)
+### Docker Deployment Options
 
-1. **Create environment file**:
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Set production values:
-   ```env
-   DATABASE_URL=postgresql://postgres:yourpassword@db:5432/sanctum_kanban
-   NEXTAUTH_URL=https://your-domain.com
-   NEXTAUTH_SECRET=your-generated-secret
-   POSTGRES_PASSWORD=yourpassword
-   ```
+#### Option 1: Full Stack (App + Database)
 
-2. **Build and start**:
-   ```bash
-   docker-compose up -d --build
-   ```
+Deploy both the app and PostgreSQL in containers:
 
-3. **Initialize database**:
-   ```bash
-   docker-compose exec app npx prisma db push
-   docker-compose exec app npm run db:seed
-   ```
+```bash
+# Create environment file
+cp .env.example .env
+# Edit .env with production values
 
-4. **Access** your app at http://localhost:3456
+# Build and start both containers
+docker-compose up -d --build
+
+# Initialize database
+docker-compose exec app npx prisma db push
+docker-compose exec app npm run db:seed
+```
+
+#### Option 2: App Container Only (Existing Database)
+
+If you already have PostgreSQL running (e.g., from development):
+
+```bash
+# Build and start only the app container
+docker-compose -f docker-compose.app.yml up -d --build
+```
+
+This connects to your existing database via `host.docker.internal:5432`.
+
+#### Option 3: Development with Hot Reload
+
+Run the database in Docker, app locally for hot reloading:
+
+```bash
+# Start database only
+docker-compose -f docker-compose.dev.yml up -d
+
+# Run app locally
+npm run dev
+```
+
+### Docker Compose Files
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | Full production stack (app + db) |
+| `docker-compose.app.yml` | App container only (uses existing db) |
+| `docker-compose.dev.yml` | Database only (for local development) |
+
+**Access** your app at http://localhost:3456
 
 ### Production with Reverse Proxy (Recommended)
 

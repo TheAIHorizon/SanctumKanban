@@ -97,9 +97,10 @@ sanctum-kanban/
 │   └── types/
 │       └── next-auth.d.ts # NextAuth type extensions
 ├── server.ts              # Custom server with Socket.IO
-├── docker-compose.yml     # Production deployment
+├── docker-compose.yml     # Full stack (app + db)
+├── docker-compose.app.yml # App container only (uses existing db)
 ├── docker-compose.dev.yml # Development (DB only)
-└── Dockerfile             # Production image
+└── Dockerfile             # Production image (Node.js Alpine + OpenSSL)
 ```
 
 ## Database Schema (Prisma)
@@ -261,22 +262,49 @@ NEXTAUTH_SECRET       # Session encryption key
 PORT                  # Server port (default: 3456)
 ```
 
-## Running Locally
+## Running the App
+
+### Option 1: Local Development (Hot Reload)
 
 ```bash
-# Start database
+# Start database in Docker
 docker-compose -f docker-compose.dev.yml up -d
 
-# Install dependencies
+# Install dependencies & setup
 npm install
-
-# Setup database
 npm run db:push
 npm run db:seed
 
-# Start dev server
+# Start dev server with hot reload
 npm run dev
 ```
+
+### Option 2: Full Docker (Production)
+
+```bash
+# Build and run both app + db containers
+docker-compose up -d --build
+
+# Initialize database
+docker-compose exec app npx prisma db push
+docker-compose exec app npm run db:seed
+```
+
+### Option 3: App in Docker, Existing DB
+
+```bash
+# If PostgreSQL is already running (e.g., from dev)
+docker-compose -f docker-compose.app.yml up -d --build
+```
+
+### Docker Files
+
+| File | Use Case |
+|------|----------|
+| `docker-compose.yml` | Full production (app + PostgreSQL) |
+| `docker-compose.app.yml` | App container only, connects to `host.docker.internal:5432` |
+| `docker-compose.dev.yml` | PostgreSQL only, run app with `npm run dev` |
+| `Dockerfile` | Multi-stage build (Node.js 20 Alpine, includes OpenSSL for Prisma) |
 
 ## Default Login
 

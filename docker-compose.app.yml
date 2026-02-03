@@ -1,0 +1,21 @@
+version: '3.8'
+
+# Runs ONLY the app container - uses existing database on host
+# Use: docker-compose -f docker-compose.app.yml up -d --build
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sanctum-kanban-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@host.docker.internal:5432/sanctum_kanban?schema=public
+      NEXTAUTH_URL: http://localhost:3456
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-super-secret-key-change-in-production}
+      PORT: 3456
+    ports:
+      - "3456:3456"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
