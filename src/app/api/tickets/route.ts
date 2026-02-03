@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, teamId, assigneeId, status } = body
+    const { title, description, teamId, assigneeId, status, dueDate, tagIds } = body
 
     if (!title || !teamId) {
       return NextResponse.json(
@@ -57,6 +57,12 @@ export async function POST(request: NextRequest) {
         status: status || 'BACKLOG',
         position: (highestPosition?.position || 0) + 1,
         createdById: session.user.id,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        ...(tagIds && tagIds.length > 0 && {
+          tags: {
+            create: tagIds.map((tagId: string) => ({ tagId })),
+          },
+        }),
       },
       include: {
         assignee: {
@@ -65,6 +71,11 @@ export async function POST(request: NextRequest) {
             firstName: true,
             lastName: true,
             color: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
           },
         },
       },
@@ -133,6 +144,11 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
           },
         },
       },

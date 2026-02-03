@@ -26,14 +26,27 @@ interface TeamMember {
   user: User
 }
 
+interface Tag {
+  id: string
+  name: string
+  color: string
+}
+
+interface TicketTag {
+  tag: Tag
+}
+
 interface Ticket {
   id: string
   title: string
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
+  dueDate?: string | null
   assignee: User | null
   teamId: string
+  tags?: TicketTag[]
+  _count?: { comments: number }
 }
 
 interface Reflection {
@@ -50,6 +63,7 @@ interface Team {
   description: string | null
   members: TeamMember[]
   tickets: Ticket[]
+  tags?: Tag[]
   reflections: Reflection[]
 }
 
@@ -182,6 +196,7 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
               teamId={team.id}
               tickets={tickets}
               members={team.members}
+              tags={team.tags || []}
               currentUser={currentUser}
               isTeamLead={isTeamLead}
               compactView={compactView}
@@ -205,6 +220,7 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
         onOpenChange={setCreateDialogOpen}
         teamId={team.id}
         members={team.members}
+        tags={team.tags || []}
         onTicketCreated={handleTicketCreated}
       />
     </Card>

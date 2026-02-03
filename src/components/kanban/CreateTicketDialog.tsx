@@ -36,14 +36,22 @@ interface TeamMember {
   user: User
 }
 
+interface Tag {
+  id: string
+  name: string
+  color: string
+}
+
 interface Ticket {
   id: string
   title: string
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
+  dueDate?: string | null
   assignee: User | null
   teamId: string
+  tags?: { tag: Tag }[]
 }
 
 interface CreateTicketDialogProps {
@@ -51,6 +59,7 @@ interface CreateTicketDialogProps {
   onOpenChange: (open: boolean) => void
   teamId: string
   members: TeamMember[]
+  tags?: Tag[]
   onTicketCreated: (ticket: Ticket) => void
 }
 
@@ -59,11 +68,14 @@ export function CreateTicketDialog({
   onOpenChange,
   teamId,
   members,
+  tags = [],
   onTicketCreated,
 }: CreateTicketDialogProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [assigneeId, setAssigneeId] = useState<string>('')
+  const [dueDate, setDueDate] = useState('')
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -82,6 +94,8 @@ export function CreateTicketDialog({
           teamId,
           assigneeId: assigneeId || null,
           status: 'BACKLOG',
+          dueDate: dueDate || null,
+          tagIds: selectedTagIds,
         }),
       })
 
@@ -105,7 +119,17 @@ export function CreateTicketDialog({
     setTitle('')
     setDescription('')
     setAssigneeId('')
+    setDueDate('')
+    setSelectedTagIds([])
     setError('')
+  }
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTagIds(prev =>
+      prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    )
   }
 
   return (
@@ -149,28 +173,71 @@ export function CreateTicketDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="assignee">Assignee</Label>
-            <Select value={assigneeId} onValueChange={setAssigneeId} disabled={loading}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select team member" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unassigned">Unassigned</SelectItem>
-                {members.map((member) => (
-                  <SelectItem key={member.user.id} value={member.user.id}>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: member.user.color }}
-                      />
-                      {member.user.firstName} {member.user.lastName}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="assignee">Assignee</Label>
+              <Select value={assigneeId} onValueChange={setAssigneeId} disabled={loading}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {members.map((member) => (
+                    <SelectItem key={member.user.id} value={member.user.id}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: member.user.color }}
+                        />
+                        {member.user.firstName} {member.user.lastName}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="due-date">Due Date</Label>
+              <Input
+                id="due-date"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                disabled={loading}
+              />
+            </div>
           </div>
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => toggleTag(tag.id)}
+                    className={`text-xs px-2 py-1 rounded-full border transition-all ${
+                      selectedTagIds.includes(tag.id)
+                        ? 'ring-2 ring-offset-1'
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                    style={{
+                      backgroundColor: tag.color + '30',
+                      borderColor: tag.color,
+                      color: tag.color,
+                    }}
+                    disabled={loading}
+                  >
+                    {selectedTagIds.includes(tag.id) && '✓ '}
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button

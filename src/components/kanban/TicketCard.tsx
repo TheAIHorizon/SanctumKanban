@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { EditTicketDialog } from './EditTicketDialog'
 import { cn } from '@/lib/utils'
-import { MoreHorizontal, Pencil, Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, GripVertical, ChevronDown, ChevronUp, Calendar, MessageCircle } from 'lucide-react'
 
 interface User {
   id: string
@@ -28,14 +28,27 @@ interface TeamMember {
   user: User
 }
 
+interface Tag {
+  id: string
+  name: string
+  color: string
+}
+
+interface TicketTag {
+  tag: Tag
+}
+
 interface Ticket {
   id: string
   title: string
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
+  dueDate?: string | null
   assignee: User | null
   teamId: string
+  tags?: TicketTag[]
+  _count?: { comments: number }
 }
 
 interface CurrentUser {
@@ -46,6 +59,7 @@ interface CurrentUser {
 interface TicketCardProps {
   ticket: Ticket
   members: TeamMember[]
+  tags?: Tag[]
   currentUser: CurrentUser
   isTeamLead: boolean
   compactView?: boolean
@@ -79,6 +93,7 @@ function getContrastColor(hexColor: string): string {
 export function TicketCard({
   ticket,
   members,
+  tags,
   currentUser,
   isTeamLead,
   compactView = true,
@@ -92,6 +107,21 @@ export function TicketCard({
 
   // Show expanded view if not in compact mode OR if user expanded this card
   const showExpanded = !compactView || isExpanded
+
+  // Check if due date is overdue or soon
+  const getDueDateStatus = () => {
+    if (!ticket.dueDate) return null
+    const due = new Date(ticket.dueDate)
+    const now = new Date()
+    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    if (diffDays < 0) return 'overdue'
+    if (diffDays <= 2) return 'soon'
+    return 'ok'
+  }
+
+  const dueDateStatus = getDueDateStatus()
+  const commentCount = ticket._count?.comments || 0
+  const ticketTags = ticket.tags?.map(t => t.tag) || []
 
   const canEdit =
     currentUser.role === 'ADMIN' ||
@@ -189,13 +219,32 @@ export function TicketCard({
                 )}>
                   {ticket.title}
                 </h4>
-                {!showExpanded && ticket.assignee && (
-                  <span className={cn(
-                    "text-[10px]",
-                    isLightText ? "text-white/70" : "text-black/60"
-                  )}>
-                    {ticket.assignee.firstName} {ticket.assignee.lastName[0]}.
-                  </span>
+                {!showExpanded && (
+                  <div className="flex items-center gap-2">
+                    {ticket.assignee && (
+                      <span className={cn(
+                        "text-[10px]",
+                        isLightText ? "text-white/70" : "text-black/60"
+                      )}>
+                        {ticket.assignee.firstName} {ticket.assignee.lastName[0]}.
+                      </span>
+                    )}
+                    {dueDateStatus === 'overdue' && (
+                      <Calendar className="h-3 w-3 text-red-500" />
+                    )}
+                    {dueDateStatus === 'soon' && (
+                      <Calendar className="h-3 w-3 text-amber-500" />
+                    )}
+                    {commentCount > 0 && (
+                      <span className={cn(
+                        "text-[10px] flex items-center gap-0.5",
+                        isLightText ? "text-white/70" : "text-black/60"
+                      )}>
+                        <MessageCircle className="h-2.5 w-2.5" />
+                        {commentCount}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="flex items-center gap-1">
@@ -265,6 +314,49 @@ export function TicketCard({
                   </p>
                 )}
 
+                {/* Tags */}
+                {ticketTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {ticketTags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                        style={{ 
+                          backgroundColor: tag.color + '40', 
+                          color: isLightText ? '#ffffff' : tag.color,
+                          border: `1px solid ${tag.color}80`
+                        }}
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Due date and comment count */}
+                <div className="flex items-center gap-3 mt-2">
+                  {ticket.dueDate && (
+                    <span className={cn(
+                      "text-[10px] flex items-center gap-1",
+                      dueDateStatus === 'overdue' && "text-red-500 font-semibold",
+                      dueDateStatus === 'soon' && "text-amber-500 font-semibold",
+                      dueDateStatus === 'ok' && (isLightText ? "text-white/70" : "text-black/60")
+                    )}>
+                      <Calendar className="h-3 w-3" />
+                      {new Date(ticket.dueDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  {commentCount > 0 && (
+                    <span className={cn(
+                      "text-[10px] flex items-center gap-1",
+                      isLightText ? "text-white/70" : "text-black/60"
+                    )}>
+                      <MessageCircle className="h-3 w-3" />
+                      {commentCount}
+                    </span>
+                  )}
+                </div>
+
                 <p className={cn(
                   "text-xs font-medium mt-2",
                   isLightText ? "text-white/90" : "text-black/80"
@@ -285,6 +377,7 @@ export function TicketCard({
         onOpenChange={setEditDialogOpen}
         ticket={ticket}
         members={members}
+        tags={tags}
         onTicketUpdated={onTicketUpdated}
       />
     </>

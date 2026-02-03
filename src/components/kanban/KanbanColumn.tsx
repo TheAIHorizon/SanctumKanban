@@ -18,14 +18,23 @@ interface TeamMember {
   user: User
 }
 
+interface Tag {
+  id: string
+  name: string
+  color: string
+}
+
 interface Ticket {
   id: string
   title: string
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
+  dueDate?: string | null
   assignee: User | null
   teamId: string
+  tags?: { tag: Tag }[]
+  _count?: { comments: number }
 }
 
 interface CurrentUser {
@@ -39,6 +48,7 @@ interface KanbanColumnProps {
   color: string
   tickets: Ticket[]
   members: TeamMember[]
+  tags?: Tag[]
   currentUser: CurrentUser
   isTeamLead: boolean
   compactView?: boolean
@@ -52,6 +62,7 @@ export function KanbanColumn({
   color,
   tickets,
   members,
+  tags = [],
   currentUser,
   isTeamLead,
   compactView = true,
@@ -84,6 +95,7 @@ export function KanbanColumn({
             key={ticket.id}
             ticket={ticket}
             members={members}
+            tags={tags}
             currentUser={currentUser}
             isTeamLead={isTeamLead}
             compactView={compactView}

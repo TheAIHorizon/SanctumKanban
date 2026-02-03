@@ -5,6 +5,25 @@ import { AnnouncementBanner } from '@/components/announcements/AnnouncementBanne
 import { TeamGrid } from '@/components/dashboard/TeamGrid'
 
 async function getTeams(userId: string, role: string) {
+  const ticketInclude = {
+    assignee: {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        color: true,
+      },
+    },
+    tags: {
+      include: {
+        tag: true,
+      },
+    },
+    _count: {
+      select: { comments: true },
+    },
+  }
+
   if (role === 'ADMIN') {
     // Admins can see all teams
     return prisma.team.findMany({
@@ -23,18 +42,10 @@ async function getTeams(userId: string, role: string) {
           },
         },
         tickets: {
-          include: {
-            assignee: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                color: true,
-              },
-            },
-          },
+          include: ticketInclude,
           orderBy: [{ status: 'asc' }, { position: 'asc' }],
         },
+        tags: true,
         reflections: {
           orderBy: { weekOf: 'desc' },
           take: 1,
@@ -68,18 +79,10 @@ async function getTeams(userId: string, role: string) {
         },
       },
       tickets: {
-        include: {
-          assignee: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              color: true,
-            },
-          },
-        },
+        include: ticketInclude,
         orderBy: [{ status: 'asc' }, { position: 'asc' }],
       },
+      tags: true,
       reflections: {
         orderBy: { weekOf: 'desc' },
         take: 1,

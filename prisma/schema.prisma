@@ -48,6 +48,7 @@ model User {
   createdTickets  Ticket[]       @relation("CreatedTickets")
   ticketHistory   TicketHistory[]
   announcements   Announcement[]
+  comments        Comment[]
 
   // NextAuth
   accounts      Account[]
@@ -66,6 +67,7 @@ model Team {
   members     TeamMember[]
   tickets     Ticket[]
   reflections Reflection[]
+  tags        Tag[]
 }
 
 // Junction table for User-Team many-to-many relationship
@@ -90,6 +92,7 @@ model Ticket {
   description String?
   status      TicketStatus @default(BACKLOG)
   position    Int          @default(0)
+  dueDate     DateTime?
   teamId      String
   assigneeId  String?
   createdById String
@@ -101,6 +104,49 @@ model Ticket {
   assignee  User?           @relation("AssignedTickets", fields: [assigneeId], references: [id], onDelete: SetNull)
   createdBy User            @relation("CreatedTickets", fields: [createdById], references: [id])
   history   TicketHistory[]
+  tags      TicketTag[]
+  comments  Comment[]
+}
+
+// Tag model for labeling tickets
+model Tag {
+  id        String      @id @default(cuid())
+  name      String
+  color     String      @default("#6b7280") // Gray default
+  teamId    String?     // Null = global tag, otherwise team-specific
+  createdAt DateTime    @default(now())
+
+  // Relations
+  team    Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tickets TicketTag[]
+
+  @@unique([name, teamId])
+}
+
+// Junction table for Ticket-Tag many-to-many
+model TicketTag {
+  id       String @id @default(cuid())
+  ticketId String
+  tagId    String
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, tagId])
+}
+
+// Comment model for ticket discussions
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  ticketId  String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
 }
 
 // Ticket history for tracking changes

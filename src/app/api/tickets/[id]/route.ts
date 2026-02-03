@@ -32,6 +32,24 @@ export async function GET(
             name: true,
           },
         },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+        comments: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                color: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
         history: {
           include: {
             user: {
@@ -102,10 +120,27 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, description, status, assigneeId, position } = body
+    const { title, description, status, assigneeId, position, dueDate, tagIds } = body
 
     // Track status change for history
     const statusChanged = status && status !== ticket.status
+
+    // Handle tag updates if provided
+    if (tagIds !== undefined) {
+      // Remove existing tags
+      await prisma.ticketTag.deleteMany({
+        where: { ticketId: params.id },
+      })
+      // Add new tags
+      if (tagIds.length > 0) {
+        await prisma.ticketTag.createMany({
+          data: tagIds.map((tagId: string) => ({
+            ticketId: params.id,
+            tagId,
+          })),
+        })
+      }
+    }
 
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
@@ -115,6 +150,7 @@ export async function PATCH(
         ...(status !== undefined && { status }),
         ...(assigneeId !== undefined && { assigneeId }),
         ...(position !== undefined && { position }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
       },
       include: {
         assignee: {
@@ -123,6 +159,11 @@ export async function PATCH(
             firstName: true,
             lastName: true,
             color: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
           },
         },
       },

@@ -12,8 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Kanban, Settings, Users, LogOut, User, Megaphone } from 'lucide-react'
+import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export function Header() {
   const { data: session } = useSession()
@@ -57,11 +58,18 @@ export function Header() {
                   Announcements
                 </Button>
               </Link>
+              <Link href="/admin/tags">
+                <Button variant="ghost" size="sm">
+                  <Tag className="h-4 w-4 mr-1" />
+                  Tags
+                </Button>
+              </Link>
             </>
           )}
         </nav>
 
         <div className="flex items-center space-x-2">
+          <ThemeToggle />
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

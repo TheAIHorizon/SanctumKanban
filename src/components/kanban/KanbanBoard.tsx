@@ -28,14 +28,23 @@ interface TeamMember {
   user: User
 }
 
+interface Tag {
+  id: string
+  name: string
+  color: string
+}
+
 interface Ticket {
   id: string
   title: string
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
+  dueDate?: string | null
   assignee: User | null
   teamId: string
+  tags?: { tag: Tag }[]
+  _count?: { comments: number }
 }
 
 interface CurrentUser {
@@ -47,6 +56,7 @@ interface KanbanBoardProps {
   teamId: string
   tickets: Ticket[]
   members: TeamMember[]
+  tags?: Tag[]
   currentUser: CurrentUser
   isTeamLead: boolean
   compactView?: boolean
@@ -64,6 +74,7 @@ export function KanbanBoard({
   teamId,
   tickets,
   members,
+  tags = [],
   currentUser,
   isTeamLead,
   compactView = true,
@@ -152,6 +163,7 @@ export function KanbanBoard({
             color={column.color}
             tickets={getTicketsForColumn(column.id)}
             members={members}
+            tags={tags}
             currentUser={currentUser}
             isTeamLead={isTeamLead}
             compactView={compactView}
@@ -166,6 +178,7 @@ export function KanbanBoard({
           <TicketCard
             ticket={activeTicket}
             members={members}
+            tags={tags}
             currentUser={currentUser}
             isTeamLead={isTeamLead}
             compactView={compactView}
