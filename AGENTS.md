@@ -2,6 +2,29 @@
 
 This document provides a quick reference for AI agents working on this codebase.
 
+## Sanctum Suite Context
+
+SanctumKanban is part of the **Sanctum Suite** — a collection of privacy-first, local-AI productivity tools:
+
+| App | Purpose | Repo |
+|-----|---------|------|
+| **Consilium** | Multi-model AI council | [GitHub](https://github.com/lafintiger/Consilium) |
+| **Galatea** | Local voice AI companion | [GitHub](https://github.com/lafintiger/galatea) |
+| **SanctumWriter** | AI-powered markdown editor | [GitHub](https://github.com/lafintiger/SanctumWriter) |
+| **SanctumKanban** | Multi-team project management | This repo |
+
+### Core Principles (MUST follow)
+
+1. **Privacy First** - All processing happens locally
+2. **Data Sovereignty** - Nothing leaves the user's machines
+3. **Local AI** - Use Ollama/LM Studio, NOT cloud APIs (OpenAI, Anthropic, etc.)
+4. **Self-Hosted** - If a server is involved, user owns it
+5. **No Telemetry** - No external data sharing
+
+### Future AI Integration
+
+When adding AI features, connect to **Ollama** (localhost:11434) like the other Sanctum apps do. Do NOT add OpenAI/Anthropic/cloud API integrations.
+
 ## Project Overview
 
 **Sanctum Kanban** is a self-hosted, real-time multi-team kanban application built with Next.js 14. It features drag-and-drop tickets, color-coded team members (full card background creates a heat map effect), reflection boards, and announcements.
@@ -39,7 +62,9 @@ sanctum-kanban/
 │   │   ├── api/           # API routes
 │   │   │   ├── auth/      # NextAuth endpoints
 │   │   │   ├── teams/     # Team CRUD + members
-│   │   │   ├── tickets/   # Ticket CRUD
+│   │   │   ├── tickets/   # Ticket CRUD + comments
+│   │   │   ├── tags/      # Tag CRUD
+│   │   │   ├── comments/  # Comment operations
 │   │   │   ├── users/     # User CRUD + activity
 │   │   │   ├── announcements/
 │   │   │   └── reflections/
@@ -85,17 +110,21 @@ sanctum-kanban/
 User          - Users with roles (ADMIN, TEAM_LEAD, MEMBER)
 Team          - Teams/projects
 TeamMember    - Junction: User <-> Team (with role: LEAD/MEMBER)
-Ticket        - Kanban tickets (status: BACKLOG/DOING/DONE)
+Ticket        - Kanban tickets (status: BACKLOG/DOING/DONE, dueDate, tags, comments)
 TicketHistory - Audit log for ticket changes
+Tag           - Labels for tickets (global or team-specific)
+TicketTag     - Junction: Ticket <-> Tag (many-to-many)
+Comment       - Threaded discussions on tickets
 Reflection    - Weekly team reflections (3 columns)
 Announcement  - Global announcements (can be pinned)
 ```
 
 ### Key Relationships
 
-- User has many TeamMemberships, Tickets (assigned & created), TicketHistory
-- Team has many TeamMembers, Tickets, Reflections
-- Ticket belongs to Team, has optional Assignee (User), has History
+- User has many TeamMemberships, Tickets (assigned & created), TicketHistory, Comments
+- Team has many TeamMembers, Tickets, Reflections, Tags
+- Ticket belongs to Team, has optional Assignee (User), has History, Tags, Comments
+- Tag can be global (teamId=null) or team-specific
 
 ## Authentication & Authorization
 
@@ -150,6 +179,50 @@ Kanban boards support compact mode to handle teams with many tickets:
 See `TicketCard.tsx` for implementation:
 ```typescript
 const showExpanded = !compactView || isExpanded // Local expand state
+```
+
+### Due Dates
+
+Tickets can have optional due dates with visual indicators:
+- **Overdue**: Red calendar icon (past due)
+- **Due Soon**: Amber calendar icon (within 2 days)
+- **OK**: Normal display
+
+```typescript
+const getDueDateStatus = () => {
+  if (!ticket.dueDate) return null
+  const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  if (diffDays < 0) return 'overdue'
+  if (diffDays <= 2) return 'soon'
+  return 'ok'
+}
+```
+
+### Tags/Labels
+
+Tags categorize tickets and can be:
+- **Global**: Available to all teams (teamId = null)
+- **Team-specific**: Only available to one team
+
+Admin page at `/admin/tags` for management. Tags display as colored badges on expanded tickets.
+
+### Comments
+
+Tickets support threaded comments via the Edit Ticket dialog → Comments tab:
+- `GET/POST /api/tickets/[id]/comments` - List/add comments
+- `PATCH/DELETE /api/comments/[id]` - Edit/delete own comments
+- Comment count shown on ticket cards
+
+### Dark Mode
+
+Uses `next-themes` for theme management:
+- Toggle in header (sun/moon icon)
+- Options: Light, Dark, System
+- Persists in localStorage
+
+```typescript
+// src/components/theme-provider.tsx
+import { ThemeProvider as NextThemesProvider } from 'next-themes'
 ```
 
 ## Common Tasks
@@ -218,5 +291,8 @@ npm run dev
 | `src/lib/auth.ts` | Auth configuration and callbacks |
 | `src/middleware.ts` | Route protection rules |
 | `src/app/(dashboard)/page.tsx` | Main dashboard |
-| `src/components/kanban/TicketCard.tsx` | Ticket rendering (color-coded) |
+| `src/app/(dashboard)/admin/tags/page.tsx` | Tag management (admin) |
+| `src/components/kanban/TicketCard.tsx` | Ticket rendering (color-coded, tags, due dates) |
 | `src/components/kanban/KanbanBoard.tsx` | Drag-drop logic |
+| `src/components/kanban/EditTicketDialog.tsx` | Ticket editing with comments |
+| `src/components/theme-toggle.tsx` | Dark mode toggle |

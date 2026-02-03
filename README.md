@@ -2,12 +2,29 @@
 
 A self-hosted, real-time multi-team kanban application with announcements, drag-and-drop tickets, color-coded team members, and reflection boards.
 
+**Part of the [Sanctum Suite](https://github.com/lafintiger)** — Privacy-first, local-AI productivity tools.
+
+## Sanctum Suite
+
+| App | Purpose |
+|-----|---------|
+| **[Consilium](https://github.com/lafintiger/Consilium)** | Multi-model AI council for comparing, debating, and verifying LLM responses |
+| **[Galatea](https://github.com/lafintiger/galatea)** | Local voice AI companion with vision capabilities |
+| **[SanctumWriter](https://github.com/lafintiger/SanctumWriter)** | AI-powered markdown editor for writers |
+| **SanctumKanban** | Multi-team project management (this app) |
+
+**Core Principles**: Privacy first • Data sovereignty • Local AI • Self-hosted • No telemetry
+
 ## Features
 
 - **Multi-Team Kanban Boards**: Each team has its own kanban with Backlog, Doing, and Done columns
 - **Drag-and-Drop**: Move tickets between columns with intuitive drag-and-drop
 - **Color-Coded Members**: Each team member has a unique color - tickets use full background color for a "heat map" effect
 - **Compact/Expanded View**: Toggle between compact (title only) and expanded (full details) views; click individual tickets to expand
+- **Due Dates**: Set deadlines with visual indicators (overdue = red, due soon = amber)
+- **Tags/Labels**: Categorize tickets with colored tags (global or team-specific)
+- **Comments**: Threaded discussions on tickets
+- **Dark Mode**: Toggle between light, dark, and system themes
 - **Reflection Boards**: Three-column retrospective boards (What went well, Could improve, Action items)
 - **Announcements**: Global announcements banner for all teams
 - **User Activity Tracking**: Track ticket history and user activity over time
@@ -146,6 +163,10 @@ sanctum-kanban/
 | POST/DELETE | `/api/teams/[id]/members` | Team membership |
 | GET/POST | `/api/tickets` | List/create tickets |
 | GET/PATCH/DELETE | `/api/tickets/[id]` | Ticket operations |
+| GET/POST | `/api/tickets/[id]/comments` | Ticket comments |
+| PATCH/DELETE | `/api/comments/[id]` | Comment operations |
+| GET/POST | `/api/tags` | List/create tags |
+| PATCH/DELETE | `/api/tags/[id]` | Tag operations |
 | GET/POST | `/api/users` | List/create users |
 | GET/PATCH/DELETE | `/api/users/[id]` | User operations |
 | GET | `/api/users/[id]/activity` | User activity history |
