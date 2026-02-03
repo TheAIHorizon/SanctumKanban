@@ -6,7 +6,8 @@ A self-hosted, real-time multi-team kanban application with announcements, drag-
 
 - **Multi-Team Kanban Boards**: Each team has its own kanban with Backlog, Doing, and Done columns
 - **Drag-and-Drop**: Move tickets between columns with intuitive drag-and-drop
-- **Color-Coded Members**: Each team member has a unique color for easy identification
+- **Color-Coded Members**: Each team member has a unique color - tickets use full background color for a "heat map" effect
+- **Compact/Expanded View**: Toggle between compact (title only) and expanded (full details) views; click individual tickets to expand
 - **Reflection Boards**: Three-column retrospective boards (What went well, Could improve, Action items)
 - **Announcements**: Global announcements banner for all teams
 - **User Activity Tracking**: Track ticket history and user activity over time

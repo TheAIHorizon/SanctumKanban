@@ -138,6 +138,20 @@ const cardColor = ticket.assignee?.color || '#e5e7eb' // Gray for unassigned
 const textColor = getContrastColor(cardColor) // Auto black/white for readability
 ```
 
+### Compact/Expanded View
+
+Kanban boards support compact mode to handle teams with many tickets:
+
+- **Default**: Compact view - shows title + assignee initials only
+- **Toggle**: Click the expand/minimize icon in the team header to switch all tickets
+- **Individual expand**: Click any ticket to expand just that one for details
+- **Props flow**: `TeamKanban` → `KanbanBoard` → `KanbanColumn` → `TicketCard` all pass `compactView` prop
+
+See `TicketCard.tsx` for implementation:
+```typescript
+const showExpanded = !compactView || isExpanded // Local expand state
+```
+
 ## Common Tasks
 
 ### Adding a New API Route
