@@ -14,6 +14,15 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Users can only view their own activity, admins can view any
+    // (same rule enforced by GET /api/users/[id])
+    if (session.user.role !== 'ADMIN' && session.user.id !== params.id) {
+      return NextResponse.json(
+        { error: 'You can only view your own activity' },
+        { status: 403 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const fromDate = searchParams.get('from')
     const toDate = searchParams.get('to')

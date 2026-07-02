@@ -14,6 +14,24 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Verify the ticket exists and the requester has access to its team
+    // (same check the POST handler below already performs)
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: params.id },
+      include: { team: { include: { members: true } } },
+    })
+
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+
+    const isAdmin = session.user.role === 'ADMIN'
+    const isMember = ticket.team.members.some(m => m.userId === session.user.id)
+
+    if (!isAdmin && !isMember) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const comments = await prisma.comment.findMany({
       where: { ticketId: params.id },
       include: {

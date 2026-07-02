@@ -14,6 +14,26 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId')
 
+    // If team-specific tags were requested, verify the requester has access
+    // to that team (same check used by POST below)
+    if (teamId && session.user.role !== 'ADMIN') {
+      const membership = await prisma.teamMember.findUnique({
+        where: {
+          userId_teamId: {
+            userId: session.user.id,
+            teamId,
+          },
+        },
+      })
+
+      if (!membership) {
+        return NextResponse.json(
+          { error: 'You do not have access to this team' },
+          { status: 403 }
+        )
+      }
+    }
+
     // Get global tags and team-specific tags if teamId provided
     const where = teamId
       ? { OR: [{ teamId: null }, { teamId }] }
