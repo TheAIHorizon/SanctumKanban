@@ -16,6 +16,9 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Disable Next.js telemetry (no build-time egress)
+ENV NEXT_TELEMETRY_DISABLED=1
+
 # Generate Prisma client
 RUN npx prisma generate
 
@@ -28,6 +31,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Install OpenSSL for Prisma runtime
 RUN apk add --no-cache openssl
