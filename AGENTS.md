@@ -8,9 +8,9 @@ SanctumKanban is part of the **Sanctum Suite** — a collection of privacy-first
 
 | App | Purpose | Repo |
 |-----|---------|------|
-| **Consilium** | Multi-model AI council | [GitHub](https://github.com/lafintiger/Consilium) |
-| **Galatea** | Local voice AI companion | [GitHub](https://github.com/lafintiger/galatea) |
-| **SanctumWriter** | AI-powered markdown editor | [GitHub](https://github.com/lafintiger/SanctumWriter) |
+| **Consilium** | Multi-model AI council | [GitHub](https://github.com/TheAIHorizon/Consilium) |
+| **Galatea** | Local voice AI companion | [GitHub](https://github.com/TheAIHorizon/Galatea) |
+| **SanctumWriter** | AI-powered markdown editor | [GitHub](https://github.com/TheAIHorizon/SanctumWriter) |
 | **SanctumKanban** | Multi-team project management | This repo |
 
 ### Core Principles (MUST follow)

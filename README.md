@@ -2,15 +2,15 @@
 
 A self-hosted multi-team kanban application with announcements, drag-and-drop tickets, color-coded team members, and reflection boards. Real-time collaboration is planned but not yet implemented — see [Real-Time Updates](#real-time-updates) below.
 
-**Part of the [Sanctum Suite](https://github.com/lafintiger)** — Privacy-first, local-AI productivity tools.
+**Part of the [Sanctum Suite](https://github.com/TheAIHorizon)** — Privacy-first, local-AI productivity tools.
 
 ## Sanctum Suite
 
 | App | Purpose |
 |-----|---------|
-| **[Consilium](https://github.com/lafintiger/Consilium)** | Multi-model AI council for comparing, debating, and verifying LLM responses |
-| **[Galatea](https://github.com/lafintiger/galatea)** | Local voice AI companion with vision capabilities |
-| **[SanctumWriter](https://github.com/lafintiger/SanctumWriter)** | AI-powered markdown editor for writers |
+| **[Consilium](https://github.com/TheAIHorizon/Consilium)** | Multi-model AI council for comparing, debating, and verifying LLM responses |
+| **[Galatea](https://github.com/TheAIHorizon/Galatea)** | Local voice AI companion with vision capabilities |
+| **[SanctumWriter](https://github.com/TheAIHorizon/SanctumWriter)** | AI-powered markdown editor for writers |
 | **SanctumKanban** | Multi-team project management (this app) |
 
 **Core Principles**: Privacy first • Data sovereignty • Local AI • Self-hosted • No telemetry
@@ -229,7 +229,7 @@ sanctum-kanban/
 
 ## License
 
-MIT License - feel free to use this for your own projects!
+TBD — no `LICENSE` file exists in this repository yet. The README previously claimed "MIT License" but that was never backed by an actual license file or grant; removed until Vince picks a license and adds it.
 
 ## Contributing
 
