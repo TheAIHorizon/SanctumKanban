@@ -1,6 +1,6 @@
 # Sanctum Kanban
 
-A self-hosted, real-time multi-team kanban application with announcements, drag-and-drop tickets, color-coded team members, and reflection boards.
+A self-hosted multi-team kanban application with announcements, drag-and-drop tickets, color-coded team members, and reflection boards. Real-time collaboration is planned but not yet implemented — see [Real-Time Updates](#real-time-updates) below.
 
 **Part of the [Sanctum Suite](https://github.com/lafintiger)** — Privacy-first, local-AI productivity tools.
 
@@ -33,7 +33,7 @@ A self-hosted, real-time multi-team kanban application with announcements, drag-
 - **Announcements**: Global announcements banner for all teams
 - **User Activity Tracking**: Track ticket history and user activity over time
 - **Role-Based Access**: Admin, Team Lead, and Member roles with appropriate permissions
-- **Real-Time Updates**: See changes from other users instantly (Socket.IO)
+- **Real-Time Updates (planned, not implemented)**: The app currently relies on `router.refresh()` after mutations and manual page reload to see other users' changes. An earlier Socket.IO prototype existed but was never wired up (client hook was never called, and the server ran with no authentication), so it has been removed. Live collaboration is on the roadmap.
 - **Self-Hosted**: Deploy on your own infrastructure with Docker
 
 ## Tech Stack
@@ -43,7 +43,7 @@ A self-hosted, real-time multi-team kanban application with announcements, drag-
 - **Authentication**: NextAuth.js
 - **UI**: Tailwind CSS + shadcn/ui
 - **Drag & Drop**: @dnd-kit
-- **Real-Time**: Socket.IO
+- **Real-Time**: Not implemented (planned; see [Real-Time Updates](#real-time-updates))
 
 ## Quick Start
 
@@ -221,11 +221,6 @@ sanctum-kanban/
 - Ensure PostgreSQL is running
 - Check `DATABASE_URL` format: `postgresql://user:password@host:5432/database`
 - For Docker, use `db` as the host (service name)
-
-### Socket.IO not connecting
-- Ensure the custom server is running (`npm run start` in production)
-- Check that port 3000 is accessible
-- For reverse proxy, ensure WebSocket connections are forwarded
 
 ### Permission denied errors
 - Check user role in database

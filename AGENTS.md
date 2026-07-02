@@ -27,7 +27,7 @@ When adding AI features, connect to **Ollama** (localhost:11434) like the other 
 
 ## Project Overview
 
-**Sanctum Kanban** is a self-hosted, real-time multi-team kanban application built with Next.js 14. It features drag-and-drop tickets, color-coded team members (full card background creates a heat map effect), reflection boards, and announcements.
+**Sanctum Kanban** is a self-hosted multi-team kanban application built with Next.js 14. It features drag-and-drop tickets, color-coded team members (full card background creates a heat map effect), reflection boards, and announcements. Real-time collaboration is planned but not yet implemented — an earlier unauthenticated Socket.IO prototype (`server.ts`, `src/lib/socket.ts`, `src/hooks/useSocket.ts`) was dead code (never wired to any component) and has been removed. Don't re-add Socket.IO without wiring auth into the connection handshake and room joins.
 
 ## Tech Stack
 
@@ -40,7 +40,7 @@ When adding AI features, connect to **Ollama** (localhost:11434) like the other 
 | Auth | NextAuth.js (credentials provider) |
 | UI | Tailwind CSS + shadcn/ui components |
 | Drag & Drop | @dnd-kit/core, @dnd-kit/sortable |
-| Real-time | Socket.IO |
+| Real-time | Not implemented (planned) |
 | Containerization | Docker + Docker Compose |
 
 ## Directory Structure
@@ -87,16 +87,14 @@ sanctum-kanban/
 │   │   └── ui/            # shadcn/ui components
 │   ├── hooks/
 │   │   ├── use-toast.ts   # Toast notifications
-│   │   └── useSocket.ts   # Socket.IO client hook
+│   │   └── useKeyboardShortcuts.ts
 │   ├── lib/
 │   │   ├── auth.ts        # NextAuth configuration
 │   │   ├── prisma.ts      # Prisma client singleton
-│   │   ├── socket.ts      # Socket.IO server utilities
 │   │   └── utils.ts       # Utility functions (cn, colors, dates)
 │   ├── middleware.ts      # Auth middleware + route protection
 │   └── types/
 │       └── next-auth.d.ts # NextAuth type extensions
-├── server.ts              # Custom server with Socket.IO
 ├── docker-compose.yml     # Full stack (app + db)
 ├── docker-compose.app.yml # App container only (uses existing db)
 ├── docker-compose.dev.yml # Development (DB only)
