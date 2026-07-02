@@ -68,6 +68,26 @@ export async function GET(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
+    // Check if user has access to this ticket's team (same membership check
+    // used by PATCH/DELETE below)
+    if (session.user.role !== 'ADMIN') {
+      const membership = await prisma.teamMember.findUnique({
+        where: {
+          userId_teamId: {
+            userId: session.user.id,
+            teamId: ticket.teamId,
+          },
+        },
+      })
+
+      if (!membership) {
+        return NextResponse.json(
+          { error: 'You do not have access to this ticket' },
+          { status: 403 }
+        )
+      }
+    }
+
     return NextResponse.json(ticket)
   } catch (error) {
     console.error('Failed to get ticket:', error)

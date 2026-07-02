@@ -45,7 +45,18 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# `.next/standalone` only ships the trimmed node_modules subset Next.js's
+# server actually imports at runtime, which excludes the `prisma` CLI and
+# `tsx` (devDependencies, never imported by app code). The documented
+# `docker compose exec app npx prisma db push` / `npm run db:seed` init
+# steps need both, so copy the full node_modules + root package.json from
+# the builder (which ran a full `npm ci`) over the trimmed ones. This
+# grows the image but keeps `db push`/`db:seed` runnable inside the
+# container without any network access at runtime (engines were already
+# fetched during `npm ci` in the builder stage).
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
 # Set ownership
 RUN chown -R nextjs:nodejs /app

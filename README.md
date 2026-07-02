@@ -1,16 +1,16 @@
 # Sanctum Kanban
 
-A self-hosted, real-time multi-team kanban application with announcements, drag-and-drop tickets, color-coded team members, and reflection boards.
+A self-hosted multi-team kanban application with announcements, drag-and-drop tickets, color-coded team members, and reflection boards. Real-time collaboration is planned but not yet implemented — see [Real-Time Updates](#real-time-updates) below.
 
-**Part of the [Sanctum Suite](https://github.com/lafintiger)** — Privacy-first, local-AI productivity tools.
+**Part of the [Sanctum Suite](https://github.com/TheAIHorizon)** — Privacy-first, local-AI productivity tools.
 
 ## Sanctum Suite
 
 | App | Purpose |
 |-----|---------|
-| **[Consilium](https://github.com/lafintiger/Consilium)** | Multi-model AI council for comparing, debating, and verifying LLM responses |
-| **[Galatea](https://github.com/lafintiger/galatea)** | Local voice AI companion with vision capabilities |
-| **[SanctumWriter](https://github.com/lafintiger/SanctumWriter)** | AI-powered markdown editor for writers |
+| **[Consilium](https://github.com/TheAIHorizon/Consilium)** | Multi-model AI council for comparing, debating, and verifying LLM responses |
+| **[Galatea](https://github.com/TheAIHorizon/Galatea)** | Local voice AI companion with vision capabilities |
+| **[SanctumWriter](https://github.com/TheAIHorizon/SanctumWriter)** | AI-powered markdown editor for writers |
 | **SanctumKanban** | Multi-team project management (this app) |
 
 **Core Principles**: Privacy first • Data sovereignty • Local AI • Self-hosted • No telemetry
@@ -33,7 +33,7 @@ A self-hosted, real-time multi-team kanban application with announcements, drag-
 - **Announcements**: Global announcements banner for all teams
 - **User Activity Tracking**: Track ticket history and user activity over time
 - **Role-Based Access**: Admin, Team Lead, and Member roles with appropriate permissions
-- **Real-Time Updates**: See changes from other users instantly (Socket.IO)
+- **Real-Time Updates (planned, not implemented)**: The app currently relies on `router.refresh()` after mutations and manual page reload to see other users' changes. An earlier Socket.IO prototype existed but was never wired up (client hook was never called, and the server ran with no authentication), so it has been removed. Live collaboration is on the roadmap.
 - **Self-Hosted**: Deploy on your own infrastructure with Docker
 
 ## Tech Stack
@@ -43,7 +43,7 @@ A self-hosted, real-time multi-team kanban application with announcements, drag-
 - **Authentication**: NextAuth.js
 - **UI**: Tailwind CSS + shadcn/ui
 - **Drag & Drop**: @dnd-kit
-- **Real-Time**: Socket.IO
+- **Real-Time**: Not implemented (planned; see [Real-Time Updates](#real-time-updates))
 
 ## Quick Start
 
@@ -222,11 +222,6 @@ sanctum-kanban/
 - Check `DATABASE_URL` format: `postgresql://user:password@host:5432/database`
 - For Docker, use `db` as the host (service name)
 
-### Socket.IO not connecting
-- Ensure the custom server is running (`npm run start` in production)
-- Check that port 3000 is accessible
-- For reverse proxy, ensure WebSocket connections are forwarded
-
 ### Permission denied errors
 - Check user role in database
 - Team leads can only manage their own teams
@@ -234,7 +229,7 @@ sanctum-kanban/
 
 ## License
 
-MIT License - feel free to use this for your own projects!
+TBD — no `LICENSE` file exists in this repository yet. The README previously claimed "MIT License" but that was never backed by an actual license file or grant; removed until Vince picks a license and adds it.
 
 ## Contributing
 

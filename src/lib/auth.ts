@@ -49,7 +49,18 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    // JWT sessions are not revoked server-side (no DB lookup on each
+    // request), so a long maxAge means a stolen/leaked token, or a
+    // deactivated/role-changed user, stays valid for the full duration.
+    // 24h caps the blast radius of a leaked token to a single day, and
+    // updateAge re-issues the JWT (refreshing its expiry) whenever the
+    // session is used and is more than 1h old, so active users are not
+    // forced to re-login constantly.
+    // Tradeoff: role/permission changes made by an admin can still take
+    // up to ~1h to apply to a user's live token (jwt() callback is only
+    // re-run on that rolling refresh) rather than instantly.
+    maxAge: 24 * 60 * 60, // 24 hours
+    updateAge: 60 * 60, // re-issue token after 1 hour of activity
   },
   callbacks: {
     async jwt({ token, user }) {
