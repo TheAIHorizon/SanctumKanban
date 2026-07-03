@@ -229,7 +229,12 @@ sanctum-kanban/
 
 ## License
 
-TBD — no `LICENSE` file exists in this repository yet. The README previously claimed "MIT License" but that was never backed by an actual license file or grant; removed until Vince picks a license and adds it.
+**Polyform Noncommercial License 1.0.0** — see [LICENSE](LICENSE) for the full text. Free for
+personal, educational, research, and other noncommercial use; commercial use requires a separate
+license from the copyright holder. This is the standard license across the Sanctum suite. It is a
+**source-available** license, not an OSI "open source" license: the code can be read and audited,
+but reuse is limited to noncommercial purposes. (An earlier README claimed "MIT"; that was never
+backed by a license file.)
 
 ## Contributing
 
