@@ -50,5 +50,3 @@ prisma/seed-workload.ts
 
 # Hermes agent workspace (local plans, not published)
 .hermes/
-prisma/seed-demo-teams.ts
-prisma/test-solver.ts

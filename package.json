@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed-demo": "tsx prisma/seed-demo-teams.ts",
     "db:import-dcwf": "tsx prisma/import-dcwf.ts",
     "db:studio": "prisma studio"
   },
