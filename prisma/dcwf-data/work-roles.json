@@ -1,0 +1,458 @@
+[
+ {
+  "title": "All-Source Analyst",
+  "code": "111",
+  "element": "Intel (Cyber)",
+  "description": "Analyzes data/information from one or multiple sources to conduct preparation of the environment, respond to requests for information, and submit intelligence collection and production requirements in support of planning and operations."
+ },
+ {
+  "title": "Exploitation Analyst",
+  "code": "121",
+  "element": "Cyber Effects",
+  "description": "Partners with cyberspace operations customers to identify access and collection gaps that can be satisfied through cyberspace exploitation. Develops detailed plans that are executed by cyber operators. Functions as navigator in cyber operations. Uses all source data to understand cyberspace targets. Employs all available techniques against targeted networks. Identifies capability gaps and submits cyberspace capability requirements to capability development organizations."
+ },
+ {
+  "title": "Digital Network Exploitation Analyst",
+  "code": "122",
+  "element": "Cyber Effects",
+  "description": "The DNEA analyzes intercepted intelligence information for metadata and content. They use this data to reconstruct and document target networks to judge the intelligence value and maintain target continuity. DNEAs understand and analyze target implementation of communication technologies and digital network systems. They discover methods and suggest strategies to exploit specific target networks, computer systems, or specific hardware and/or software."
+ },
+ {
+  "title": "Joint Targeting Analyst",
+  "code": "131",
+  "element": "Cyber Effects",
+  "description": "Joint Targeting Analyst conduct target development at the system, component and entity levels. Builds and maintains Electronic Target Folders (ETFs), to include inputs from JIPOE, Target System Analysis (TSA), GMI and other IC sources. Senior analysts run collaborative target working groups across Geographic Combatant Commands (GCCs) and IC members, and present candidate targets for IC vetting and commander\u2019s approval for inclusion on target lists. JTAs assess damage resulting from the application of lethal or non-lethal military force, and write Battle Damage Assessment (BDA) reports and coordinate federated support as required."
+ },
+ {
+  "title": "Target Digital Network Analyst",
+  "code": "132",
+  "element": "Cyber Effects",
+  "description": "The TDNA conducts advanced analysis of collection and open-source data to ensure target continuity, profile targets and their activities, and develop techniques to gain more target cyberspace operations related information. They possess knowledge of target cyberspace technologies and apply skills and knowledge of cyberspace networks and the applications on them to determine how targets communicate, move, operate, and live within the cyberspace domain. TDNAs apply analytical techniques to review relevant content carried in target cyberspace communications. The TDNA uses data from networks of all forms for target development. TDNAs are technology savvy and can be flexible enough to rapidly shift from one target to another."
+ },
+ {
+  "title": "Target Analyst Reporter",
+  "code": "133",
+  "element": "Cyber Effects",
+  "description": "The Target Analyst Reporter (TAR) provides synthesized products to customers by researching, analyzing, and reporting intelligence via appropriate reporting vehicles in response to customer requirements and IAW missions of SIGINT, cybersecurity, and cyberspace operations. They prioritize, assess, evaluate, and report information obtained from SIGINT collection, cyber surveillance, and reconnaissance operations sources. The TAR enhances reporting with collateral information as required, maintains awareness of internal and external customer requirements, and collaborates with other collectors and analysts to refine collection and reporting requirements. The TAR shares target-related information and provides feedback to customers as appropriate. The TAR develops working aids and provides database updates on target activity to enhance and build target knowledge and improve collection. The TAR performs quality control and product-release functions."
+ },
+ {
+  "title": "Multi-Disciplined Language Analyst",
+  "code": "151",
+  "element": "Intel (Cyber)",
+  "description": "Applies language and culture expertise with target/threat and technical knowledge to process, analyze, and/or disseminate intelligence information derived from language, voice and/or graphic material.  Creates, and maintains language specific databases and working aids to support cyber action execution and ensure critical knowledge sharing.  Provides subject matter expertise in foreign language-intensive or interdisciplinary projects."
+ },
+ {
+  "title": "Forensics Analyst",
+  "code": "211",
+  "element": "Cyber Enablers",
+  "description": "Conducts deep-dive investigations on computer-based crimes establishing documentary or physical evidence, to include digital media and logs associated with cyber intrusion incidents."
+ },
+ {
+  "title": "Cyber Defense Forensics Analyst",
+  "code": "212",
+  "element": "Cybersecurity",
+  "description": "Analyzes digital evidence and investigates computer security incidents to derive useful information in support of system/network vulnerability mitigation."
+ },
+ {
+  "title": "Cyber Crime Investigator",
+  "code": "221",
+  "element": "Cyber Enablers",
+  "description": "Identifies, collects, examines, and preserves evidence using controlled and documented analytical and investigative techniques."
+ },
+ {
+  "title": "All-Source Collection Manager",
+  "code": "311",
+  "element": "Intel (Cyber)",
+  "description": "Identifies collection authorities and environment; incorporates priority information requirements into collection management; develops concepts to meet leadership's intent. Determines capabilities of available collection assets, identifies new collection capabilities; and constructs and disseminates collection plans.  Monitors execution of tasked collection to ensure effective execution of the collection plan."
+ },
+ {
+  "title": "All-Source Collection Requirements Manager",
+  "code": "312",
+  "element": "Intel (Cyber)",
+  "description": "Evaluates collection operations and develops effects-based collection requirements strategies using available sources and methods to improve collection.  Develops, processes, validates, and coordinates submission of collection requirements.  Evaluates performance of collection assets and collection operations."
+ },
+ {
+  "title": "Access Network Operator",
+  "code": "321",
+  "element": "Cyber Effects",
+  "description": "Conducts access collection, processing, and/or geolocation of wired or wireless computer and digital networks in order to exploit, locate, and/or track targets of interest."
+ },
+ {
+  "title": "Cyberspace Operator",
+  "code": "322",
+  "element": "Cyber Effects",
+  "description": "Cyberspace Operators use a wide range of software applications for network navigation, tactical forensic analysis, surveillance and reconnaissance, and executing on-net operations in support of offensive cyberspace operations when directed."
+ },
+ {
+  "title": "Cyber Intelligence Planner",
+  "code": "331",
+  "element": "Intel (Cyber)",
+  "description": "Develops detailed intelligence plans to satisfy cyber operations requirements.  Collaborates with cyber operations planners to identify, validate, and levy requirements for collection and analysis.  Participates in targeting selection, validation, synchronization, and execution of cyber actions.  Synchronizes intelligence activities to support organization objectives in cyberspace."
+ },
+ {
+  "title": "Cyber Operations Planner",
+  "code": "332",
+  "element": "Cyber Effects",
+  "description": "The Cyberspace Operations Planner applies in-depth knowledge of the JOPP to develop detailed plans and orders supporting CCMD cyberspace operation requirements. Uses Joint, Service, and interagency planning and operational experience to conduct strategic and operational level planning across the full range of military operations for integrated information and cyberspace operations. Develops and maintains deliberate and crisis action planning products. Collaborates with cyberspace operators to identify and levy requirements for intelligence collection and analysis. Participates in targeting selection, validation, synchronization, and execution of complex cyberspace operations. Has sufficient technical knowledge to understand cyberspace operations capabilities, target vulnerabilities, and effects. Collaborates with cyberspace operators, analysts, enablers and planners to gain access and technical intelligence to meet planning objectives."
+ },
+ {
+  "title": "Cyberspace Capability Developer",
+  "code": "341",
+  "element": "Cyber Effects",
+  "description": "Provides software and hardware capabilities that produce cyberspace effects in and throughout cyberspace operations through vulnerability analysis, and software research and development."
+ },
+ {
+  "title": "Technical Support Specialist",
+  "code": "411",
+  "element": "IT (Cyberspace)",
+  "description": "Provides technical support to customers who need assistance utilizing client level hardware and software in accordance with established or approved organizational process components. (i.e., Master Incident Management Plan, when applicable)."
+ },
+ {
+  "title": "Database Administrator",
+  "code": "421",
+  "element": "IT (Cyberspace)",
+  "description": "Administers databases and/or data management systems that allow for the storage, query, and utilization of data."
+ },
+ {
+  "title": "Data Analyst",
+  "code": "422",
+  "element": "Data/AI",
+  "description": "Analyzes and interprets data from multiple disparate sources and builds visualizations and dashboards to report insights."
+ },
+ {
+  "title": "Data Scientist",
+  "code": "423",
+  "element": "Data/AI",
+  "description": "\"Uncovers and explains actionable insights from data by combining scientific method, math and statistics, specialized programming, advanced analytics, AI, and storytelling."
+ },
+ {
+  "title": "Data Steward",
+  "code": "424",
+  "element": "Data/AI",
+  "description": "Develops and maintains plans, policies, and processes for data management, data governance, security, quality, accessibility, use, and disposal."
+ },
+ {
+  "title": "Knowledge Manager",
+  "code": "431",
+  "element": "IT (Cyberspace)",
+  "description": "Responsible for the management and administration of processes and tools that enable the organization to identify, document, and access intellectual capital and information content."
+ },
+ {
+  "title": "Network Operations Specialist",
+  "code": "441",
+  "element": "IT (Cyberspace)",
+  "description": "Plans, implements, and operates network services/systems, to include hardware and virtual environments."
+ },
+ {
+  "title": "Network Technician",
+  "code": "442",
+  "element": "Cyber Effects",
+  "description": "The Network Technician provides enterprise and tactical infrastructure knowledge, experience, and integration to the Cyber Protection Team (CPT).  The Network Technician supports CPT elements by understanding of network technologies, defining mission scope, and identifying terrain."
+ },
+ {
+  "title": "Network Analyst",
+  "code": "443",
+  "element": "Cyber Effects",
+  "description": "The Network Analyst will understand network traffic signatures and discover anomalies through network traffic and packet capture (PCAP) analysis. The Network Analyst will identify, assess, and mitigate intrusions into networks that are vital to cyberspace operations security. Network Analysts also use GUI or command-line based tools and assist in developing network mapping and signatures. Network Analysts will develop advanced network detection rules and alerts, queries and dashboards to gain a holistic view of the network."
+ },
+ {
+  "title": "System Administrator",
+  "code": "451",
+  "element": "IT (Cyberspace)",
+  "description": "Installs, configures, troubleshoots, and maintains hardware, software, and administers system accounts."
+ },
+ {
+  "title": "Secure Configuration Specialist",
+  "code": "452",
+  "element": "IT (Cyberspace)",
+  "description": "Applies, verifies, and continuously monitors security configuration baselines for platforms, applications, and networked systems; advises system owners on secure configuration requirements, drafts secure baseline artifacts (e.g., STIG checklists, CIS Benchmarks), and integrates automated compliance tooling; collaborates with vulnerability management, DevSecOps, and Assessment & Authorization teams to ensure misconfiguration findings are identified, prioritized, and remediated across on prem and cloud environments."
+ },
+ {
+  "title": "Systems Security Analyst",
+  "code": "461",
+  "element": "Software Engineering",
+  "description": "Responsible for analysis and development of systems/software security through the product lifecycle to include integration, testing, operations and maintenance."
+ },
+ {
+  "title": "Control Systems Security Specialist",
+  "code": "462",
+  "element": "Cybersecurity",
+  "description": "Responsible for device, equipment, and system-level cybersecurity configuration and day-to-day security operations of control systems, including security monitoring and maintenance along with stakeholder coordination to ensure the system and its interconnections are secure in support of mission operations."
+ },
+ {
+  "title": "Host Analyst",
+  "code": "463",
+  "element": "Cyber Effects",
+  "description": "A Host Analyst (HA) will have knowledge of various system configurations encountered. This work role also performs analysis using built-in tools and capabilities. A Host Analyst will have knowledge of system services and the security and configuration of them, as well as knowledge of file systems, permissions, and operation system configurations. The Host Analyst conducts analysis using built-in tools and capabilities."
+ },
+ {
+  "title": "Cyber Defense Analyst",
+  "code": "511",
+  "element": "Cybersecurity",
+  "description": "Uses data collected from a variety of cyber defense tools (e.g., IDS alerts, firewalls, network traffic logs.) to analyze events that occur within their environments for the purposes of mitigating threats."
+ },
+ {
+  "title": "Cyber Defense Infrastructure Support Specialist",
+  "code": "521",
+  "element": "Cybersecurity",
+  "description": "Tests, implements, deploys, maintains, and administers the infrastructure hardware and software."
+ },
+ {
+  "title": "Cyber Defense Incident Responder",
+  "code": "531",
+  "element": "Cybersecurity",
+  "description": "Investigates, analyzes, and responds to cyber incidents within the network environment or enclave."
+ },
+ {
+  "title": "Vulnerability Assessment Analyst",
+  "code": "541",
+  "element": "Cybersecurity",
+  "description": "Performs assessments of systems and networks within the NE or enclave and identifies where those systems/networks deviate from acceptable configurations, enclave policy, or local policy. Measures effectiveness of defense-in-depth architecture against known vulnerabilities."
+ },
+ {
+  "title": "Red Team Specialist",
+  "code": "551",
+  "element": "Cyber Effects",
+  "description": "Leverages tools, systems, and utilities necessary to enhance the security posture of an organization, conducts threat and risk assessments, and performs testing and evaluation in accordance with legal and organizational requirements, policies, and regulations."
+ },
+ {
+  "title": "Authorizing Official/Designated Representative",
+  "code": "611",
+  "element": "Cybersecurity",
+  "description": "Senior official or executive with the authority to formally assume responsibility for operating an information system at an acceptable level of risk to organizational operations (including mission, functions, image, or reputation), organizational assets, individuals, other organizations, and the Nation (CNSSI 4009)."
+ },
+ {
+  "title": "Security Control Assessor",
+  "code": "612",
+  "element": "Cybersecurity",
+  "description": "Conducts independent comprehensive assessments of the management, operational, and technical security controls and control enhancements employed within or inherited by an information technology (IT) system to determine the overall effectiveness of the controls (as defined in NIST 800-37)."
+ },
+ {
+  "title": "Software Developer",
+  "code": "621",
+  "element": "Software Engineering",
+  "description": "Executes software planning, requirements, risk management, design, development, architecture, modeling, estimation, configuration management, quality, security, and tests using software development methodologies, architectural structures, viewpoints, styles, design decisions, and frameworks across all lifecycle phases."
+ },
+ {
+  "title": "Secure Software Assessor",
+  "code": "622",
+  "element": "Cybersecurity",
+  "description": "Analyzes the security of new or existing computer applications, software, or specialized utility programs and provides actionable results."
+ },
+ {
+  "title": "AI/ML Specialist",
+  "code": "623",
+  "element": "Data/AI",
+  "description": "Designs, develops, and modifies AI applications, tools, and/or other solutions to enable successful accomplishment of mission objectives."
+ },
+ {
+  "title": "Data Operations Specialist",
+  "code": "624",
+  "element": "Data/AI",
+  "description": "Builds, manages, and operationalizes data pipelines."
+ },
+ {
+  "title": "Product Designer User Interface (UI)",
+  "code": "625",
+  "element": "Software Engineering",
+  "description": "Manages the user interface design portion of the design process of a product."
+ },
+ {
+  "title": "Service Designer User Experience (UX)",
+  "code": "626",
+  "element": "Software Engineering",
+  "description": "Manages the user experience of a product focused on human factors by making products intuitive and maximizing usability, accessibility, and simplicity."
+ },
+ {
+  "title": "DevSecOps Specialist",
+  "code": "627",
+  "element": "Software Engineering",
+  "description": "Selects/Deploys/Maintains the set of Continuous Integration/Continuous Deployment (CI/CD) tools and processes used by the development team and/or maintains the deployed software product and ensures observability and security across the lifecycle."
+ },
+ {
+  "title": "Software/Cloud Architect",
+  "code": "628",
+  "element": "Software Engineering",
+  "description": "Manages and identifies program high-level technical specifications, which may include application design, cloud computing strategy and adoption, and integration of software applications into a functioning system to meet requirements."
+ },
+ {
+  "title": "Information Systems Security Developer",
+  "code": "631",
+  "element": "Cybersecurity",
+  "description": "Designs, develops, tests, and evaluates information system security throughout the systems development lifecycle."
+ },
+ {
+  "title": "Systems Developer",
+  "code": "632",
+  "element": "IT (Cyberspace)",
+  "description": "Designs, develops, tests, and evaluates information systems throughout the systems development lifecycle."
+ },
+ {
+  "title": "System Security Engineer",
+  "code": "633",
+  "element": "Cybersecurity",
+  "description": "Contributes to the design, development, and delivery of mission-capable systems and supporting systems-of-systems (such as development, operational, or maintenance systems) so that they are protected against intentional subversion or forced failure; this includes ensuring stakeholder cybersecurity, survivability, and resiliency needs are addressed across the entire system lifecycle; and that there is necessary assurance in the system\u2019s ability to operate in evolving mission and threat environments."
+ },
+ {
+  "title": "Systems Requirements Planner",
+  "code": "641",
+  "element": "IT (Cyberspace)",
+  "description": "Consults with customers to evaluate functional requirements and translate functional requirements into technical solutions."
+ },
+ {
+  "title": "Enterprise Architect",
+  "code": "651",
+  "element": "IT (Cyberspace)",
+  "description": "Develops and maintains business, systems, and information processes to support enterprise mission needs; develops information technology (IT) rules and requirements that describe baseline and target architectures."
+ },
+ {
+  "title": "Security Architect",
+  "code": "652",
+  "element": "Cybersecurity",
+  "description": "Designs enterprise and systems security throughout the development lifecycle; translates technology and environmental conditions (e.g., law and regulation) into security designs and processes."
+ },
+ {
+  "title": "Data Architect",
+  "code": "653",
+  "element": "Data/AI",
+  "description": "Designs a system's data models, data flow, interfaces, and infrastructure to meet the information requirements of a business or mission."
+ },
+ {
+  "title": "Research & Development Specialist",
+  "code": "661",
+  "element": "IT (Cyberspace)",
+  "description": "Conducts software and systems engineering and software systems research in order to develop new capabilities, ensuring cybersecurity is fully integrated. Conducts comprehensive technology research to evaluate potential vulnerabilities in cyberspace systems."
+ },
+ {
+  "title": "System Testing and Evaluation Specialist",
+  "code": "671",
+  "element": "IT (Cyberspace)",
+  "description": "Plans, prepares, and executes tests of systems to evaluate results against specifications and requirements as well as analyze/report test results."
+ },
+ {
+  "title": "AI Test & Evaluation Specialist",
+  "code": "672",
+  "element": "Data/AI",
+  "description": "Performs testing, evaluation, verification, and validation on AI solutions to ensure they are developed to be and remain robust, resilient, responsible, secure, and trustworthy; and communicates results and concerns to leadership."
+ },
+ {
+  "title": "Software Test & Evaluation Specialist",
+  "code": "673",
+  "element": "Software Engineering",
+  "description": "Plans, prepares, and performs testing, evaluation, verification, and validation of software to evaluate results against specifications, requirements, and operational need."
+ },
+ {
+  "title": "Cyber Instructional Curriculum Developer",
+  "code": "711",
+  "element": "Cyber Enablers",
+  "description": "Develops, plans, coordinates, and evaluates cyber training/education courses, methods, and techniques based on instructional needs."
+ },
+ {
+  "title": "Cyber Instructor",
+  "code": "712",
+  "element": "Cyber Enablers",
+  "description": "Develops and conducts training or education of personnel within cyber domain."
+ },
+ {
+  "title": "Information Systems Security Manager",
+  "code": "722",
+  "element": "Cybersecurity",
+  "description": "Responsible for the cybersecurity of a program, organization, system, or enclave."
+ },
+ {
+  "title": "COMSEC Manager",
+  "code": "723",
+  "element": "Cybersecurity",
+  "description": "Manages the Communications Security (COMSEC) resources of an organization (CNSSI No. 4009)."
+ },
+ {
+  "title": "Cyber Legal Advisor",
+  "code": "731",
+  "element": "Cyber Enablers",
+  "description": "Provides legal advice and recommendations on relevant topics related to cyber law."
+ },
+ {
+  "title": "Privacy Compliance Manager",
+  "code": "732",
+  "element": "Cyber Enablers",
+  "description": "Develops and oversees privacy compliance program and privacy program staff, supporting privacy compliance needs of privacy and security executives and their teams."
+ },
+ {
+  "title": "AI Risk and Ethics Specialist",
+  "code": "733",
+  "element": "Data/AI",
+  "description": "Educates those involved in the development of AI and conducts assessments on the technical and societal risks across the lifecycle of AI solutions from acquisition or design to deployment and use."
+ },
+ {
+  "title": "Cyber Workforce Developer and Manager",
+  "code": "751",
+  "element": "Cyber Enablers",
+  "description": "Develop cyberspace workforce plans, strategies and guidance to support cyberspace workforce manpower, personnel, training and education requirements and to address changes to cyberspace policy, doctrine, materiel, force structure, and education and training requirements."
+ },
+ {
+  "title": "Cyber Policy and Strategy Planner",
+  "code": "752",
+  "element": "Cyber Enablers",
+  "description": "Develops cyberspace plans, strategy and policy to support and align with organizational cyberspace missions and initiatives."
+ },
+ {
+  "title": "AI Adoption Specialist",
+  "code": "753",
+  "element": "Data/AI",
+  "description": "Facilitates AI adoption by supporting the users of AI-enabled solutions."
+ },
+ {
+  "title": "Program Manager",
+  "code": "801",
+  "element": "Cyber Enablers",
+  "description": "Leads, coordinates, communicates, integrates and is accountable for the overall success of the program, ensuring alignment with critical agency priorities."
+ },
+ {
+  "title": "IT Project Manager",
+  "code": "802",
+  "element": "Cyber Enablers",
+  "description": "Work that involves directly managing information technology projects to provide a unique service or product."
+ },
+ {
+  "title": "Product Support Manager",
+  "code": "803",
+  "element": "Cyber Enablers",
+  "description": "Manages the package of support functions required to field and maintain the readiness and operational capability of systems and components."
+ },
+ {
+  "title": "IT Investment/Portfolio Manager",
+  "code": "804",
+  "element": "Cyber Enablers",
+  "description": "Manages a portfolio of IT capabilities that align with the overall needs of mission and business enterprise priorities."
+ },
+ {
+  "title": "IT Program Auditor",
+  "code": "805",
+  "element": "Cyber Enablers",
+  "description": "Conducts evaluations of an IT program or its individual components, to determine compliance with published standards."
+ },
+ {
+  "title": "Product Manager",
+  "code": "806",
+  "element": "Software Engineering",
+  "description": "Manages the development of products including the resource management, product strategy (physical or digital), functional requirements, and releases. Coordinate work done by functions (like software engineers, data scientists, and product designers)."
+ },
+ {
+  "title": "Executive Cyber Leader",
+  "code": "901",
+  "element": "Cyber Enablers",
+  "description": "Executes decision-making authorities and establishes vision and direction for an organization's cyber and cyber-related policies, resources, and/or operations, while maintaining responsibility for risk-related decisions affecting mission success."
+ },
+ {
+  "title": "AI Innovation Leader",
+  "code": "902",
+  "element": "Data/AI",
+  "description": "Builds the organization\u2019s AI vision and plan and leads policy and doctrine formation, including how AI solutions can or will be used."
+ },
+ {
+  "title": "Data Officer",
+  "code": "903",
+  "element": "Data/AI",
+  "description": "Holds responsibility for developing, promoting, and overseeing implementation of data as an asset and the establishment and enforcement of data-related strategies, policies, standards, processes, and governance."
+ }
+]

@@ -1,0 +1,44 @@
+[
+ {
+  "name": "IT (Cyberspace)",
+  "code": "IT",
+  "opr": "DoW CIO",
+  "description": "Personnel who design, build, configure, operate, and maintain IT, networks, and capabilities. This includes actions to prioritize implement, evaluate, and dispose of IT as well as information resource management; and the management, storage, transmission, and display of data and information."
+ },
+ {
+  "name": "Cybersecurity",
+  "code": "CS",
+  "opr": "DoW CIO",
+  "description": "Personnel who secure, defend, and preserve data, networks, net-centric capabilities, and other designated systems by ensuring appropriate security controls and measures are in place, and taking internal defense actions. This includes access to system controls, monitoring, administration, and integration of cybersecurity into all aspects of engineering and acquisition of cyberspace capabilities."
+ },
+ {
+  "name": "Cyber Effects",
+  "code": "CE",
+  "opr": "ASW(CP)/DoW PCA",
+  "description": "Personnel who plan, support, and execute cyberspace capabilities where the primary purpose is to externally defend or conduct force projection in or through cyberspace."
+ },
+ {
+  "name": "Intel (Cyber)",
+  "code": "IN",
+  "opr": "USW (I&S)",
+  "description": "Personnel who collect, process, analyze, and disseminate information from all sources of intelligence on foreign actors\u2019 cyberspace programs, intentions, capabilities, research and development, and operational activities."
+ },
+ {
+  "name": "Cyber Enablers",
+  "code": "EN",
+  "opr": "DoW CIO",
+  "description": "Personnel who perform work roles to support or facilitate the functions of cyber IT, cybersecurity, cyberspace effects, or intelligence workforce (cyberspace) work roles. This includes actions to support acquisition, training and leadership activities."
+ },
+ {
+  "name": "Data/AI",
+  "code": "DA",
+  "opr": "DoW CDAO",
+  "description": "Personnel who drive and support data, analytic, and AI-enabled capabilities that harness information for decision-advantage."
+ },
+ {
+  "name": "Software Engineering",
+  "code": "SE",
+  "opr": "USW R&E",
+  "description": "Personnel who manages and identifies program high-level technical specifications, which may include, application design, development, testing, deployment, cloud computing strategy and adoption, and integration of software applications into a functioning system to meet requirements."
+ }
+]

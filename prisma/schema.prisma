@@ -31,28 +31,29 @@ enum TicketStatus {
 
 // User model
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  firstName     String
-  lastName      String
-  contactInfo   String?
-  color         String    @default("#3b82f6") // Default blue color
-  role          UserRole  @default(MEMBER)
-  passwordHash  String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  firstName    String
+  lastName     String
+  contactInfo  String?
+  color        String   @default("#3b82f6") // Default blue color
+  role         UserRole @default(MEMBER)
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
   teamMemberships TeamMember[]
-  assignedTickets Ticket[]       @relation("AssignedTickets")
-  createdTickets  Ticket[]       @relation("CreatedTickets")
+  assignedTickets Ticket[]         @relation("AssignedTickets")
+  createdTickets  Ticket[]         @relation("CreatedTickets")
   ticketHistory   TicketHistory[]
   announcements   Announcement[]
   comments        Comment[]
+  dcwfTaskLinks   TicketDcwfTask[]
 
   // NextAuth
-  accounts      Account[]
-  sessions      Session[]
+  accounts Account[]
+  sessions Session[]
 }
 
 // Team model
@@ -100,21 +101,23 @@ model Ticket {
   updatedAt   DateTime     @updatedAt
 
   // Relations
-  team      Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  assignee  User?           @relation("AssignedTickets", fields: [assigneeId], references: [id], onDelete: SetNull)
-  createdBy User            @relation("CreatedTickets", fields: [createdById], references: [id])
-  history   TicketHistory[]
-  tags      TicketTag[]
-  comments  Comment[]
+  team        Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  assignee    User?            @relation("AssignedTickets", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy   User             @relation("CreatedTickets", fields: [createdById], references: [id])
+  history     TicketHistory[]
+  tags        TicketTag[]
+  comments    Comment[]
+  dcwfTasks   TicketDcwfTask[]
+  reflections Reflection[]
 }
 
 // Tag model for labeling tickets
 model Tag {
-  id        String      @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  color     String      @default("#6b7280") // Gray default
-  teamId    String?     // Null = global tag, otherwise team-specific
-  createdAt DateTime    @default(now())
+  color     String   @default("#6b7280") // Gray default
+  teamId    String? // Null = global tag, otherwise team-specific
+  createdAt DateTime @default(now())
 
   // Relations
   team    Team?       @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -154,10 +157,10 @@ model TicketHistory {
   id         String        @id @default(cuid())
   ticketId   String
   userId     String
-  action     String        // e.g., "created", "moved", "updated", "assigned"
+  action     String // e.g., "created", "moved", "updated", "assigned"
   fromStatus TicketStatus?
   toStatus   TicketStatus?
-  details    String?       // JSON string for additional details
+  details    String? // JSON string for additional details
   timestamp  DateTime      @default(now())
 
   // Relations
@@ -173,13 +176,16 @@ model Reflection {
   couldImprove String?  @db.Text
   actionItems  String?  @db.Text
   weekOf       DateTime
+  ticketId     String? // Optional link to a ticket this reflection is about
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   // Relations
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team   Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   @@unique([teamId, weekOf])
+  @@index([ticketId])
 }
 
 // Announcements
@@ -230,4 +236,86 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ─────────────────────────────────────────────────────────────
+// DCWF (DoD Cyber Workforce Framework) reference data + linking
+// Seeded from prisma/dcwf-data/*.json via `npm run db:import-dcwf`.
+// Reference tables are read-only in the app.
+// ─────────────────────────────────────────────────────────────
+
+// Top-level DCWF category (IT, Cybersecurity, Cyber Effects, Intel, etc.)
+model DcwfElement {
+  id          String  @id @default(cuid())
+  name        String  @unique // "Cybersecurity"
+  code        String? // "CS"
+  opr         String?
+  description String? @db.Text
+
+  workRoles DcwfWorkRole[]
+}
+
+// A DCWF work role, e.g. "451 - System Administrator"
+model DcwfWorkRole {
+  id          String  @id @default(cuid())
+  code        String  @unique // "451"
+  title       String // "System Administrator"
+  elementId   String?
+  description String? @db.Text
+  // Curated flag: true = relevant to the current course/exercise (the ~15
+  // enterprise-build + week-13 pentest roles). Instructors can toggle others on.
+  inScope     Boolean @default(false)
+
+  element DcwfElement?   @relation(fields: [elementId], references: [id], onDelete: SetNull)
+  ksats   DcwfRoleKsat[]
+
+  @@index([elementId])
+}
+
+// A DCWF KSAT (Knowledge, Skill, Ability, or Task).
+// `ksatId` is the framework's own id (string — some carry a letter suffix, e.g. "1027A").
+model DcwfKsat {
+  id          String @id @default(cuid())
+  ksatId      String @unique
+  type        String // "Task" | "Knowledge" | "Skill" | "Ability"
+  description String @db.Text
+
+  roles       DcwfRoleKsat[]
+  ticketLinks TicketDcwfTask[]
+
+  @@index([type])
+}
+
+// Mapping table: which KSATs belong to which work role, and whether Core/Additional.
+model DcwfRoleKsat {
+  id               String  @id @default(cuid())
+  workRoleId       String
+  ksatId           String // FK to DcwfKsat.id (cuid)
+  coreOrAdditional String? // "Core" | "Additional" | "Unassigned"
+
+  workRole DcwfWorkRole @relation(fields: [workRoleId], references: [id], onDelete: Cascade)
+  ksat     DcwfKsat     @relation(fields: [ksatId], references: [id], onDelete: Cascade)
+
+  @@unique([workRoleId, ksatId])
+  @@index([ksatId])
+}
+
+// Links a Ticket to a DCWF Task, with the student's per-task reflection note.
+// A ticket can cover multiple DCWF tasks; each carries its own note.
+model TicketDcwfTask {
+  id          String   @id @default(cuid())
+  ticketId    String
+  ksatId      String // FK to DcwfKsat.id; app enforces the linked KSAT is type "Task"
+  note        String?  @db.Text // "what I did for this task"
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ksat      DcwfKsat @relation(fields: [ksatId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id])
+
+  @@unique([ticketId, ksatId])
+  @@index([ksatId])
+  @@index([createdById])
 }
