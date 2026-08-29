@@ -89,7 +89,7 @@ export function EditTicketDialog({
   const [description, setDescription] = useState(ticket.description || '')
   const [assigneeId, setAssigneeId] = useState(ticket.assignee?.id || 'unassigned')
   const [status, setStatus] = useState(ticket.status)
-  const [dueDate, setDueDate] = useState(ticket.dueDate ? ticket.dueDate.split('T')[0] : '')
+  const [dueDate, setDueDate] = useState(ticket.dueDate ? new Date(ticket.dueDate).toISOString().split('T')[0] : '')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     ticket.tags?.map(t => t.tag.id) || []
   )
@@ -211,7 +211,7 @@ export function EditTicketDialog({
       setDescription(ticket.description || '')
       setAssigneeId(ticket.assignee?.id || 'unassigned')
       setStatus(ticket.status)
-      setDueDate(ticket.dueDate ? ticket.dueDate.split('T')[0] : '')
+      setDueDate(ticket.dueDate ? new Date(ticket.dueDate).toISOString().split('T')[0] : '')
       setSelectedTagIds(ticket.tags?.map(t => t.tag.id) || [])
       setError('')
       setNewComment('')

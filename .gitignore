@@ -42,3 +42,8 @@ prisma/migrations/**/migration_lock.toml
 .vscode
 *.swp
 *.swo
+
+# Local demo/experiment seed scripts (not for publication)
+prisma/seed-extra-teams.ts
+prisma/seed-varied.ts
+prisma/seed-workload.ts

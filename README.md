@@ -98,15 +98,25 @@ Deploy both the app and PostgreSQL in containers:
 ```bash
 # Create environment file
 cp .env.example .env
-# Edit .env with production values
+# Edit .env — set NEXTAUTH_SECRET (openssl rand -base64 32) and POSTGRES_PASSWORD
 
 # Build and start both containers
-docker-compose up -d --build
-
-# Initialize database
-docker-compose exec app npx prisma db push
-docker-compose exec app npm run db:seed
+docker compose up -d --build
 ```
+
+That's it. On startup the app container automatically syncs the database
+schema (`prisma db push`), so the app is ready at
+[http://localhost:3456](http://localhost:3456) with an **empty** database —
+no manual init step required.
+
+**Optional — load demo/sample data** (creates an admin + sample teams):
+
+```bash
+docker compose exec app npm run db:seed
+```
+
+> The seed creates `admin@example.com` / `admin123`. Change these immediately
+> for any non-local deployment.
 
 #### Option 2: App Container Only (Existing Database)
 
