@@ -20,13 +20,19 @@ interface UserItem {
 
 export default function ReportsIndexPage() {
   const [users, setUsers] = useState<UserItem[]>([])
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
 
   useEffect(() => {
-    fetch('/api/users')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setUsers(Array.isArray(d) ? d : d.users || []))
+    Promise.all([
+      fetch('/api/users').then((r) => (r.ok ? r.json() : [])),
+      fetch('/api/teams').then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([u, t]) => {
+        setUsers(Array.isArray(u) ? u : u.users || [])
+        setTeams(Array.isArray(t) ? t : t.teams || [])
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -61,7 +67,25 @@ export default function ReportsIndexPage() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : (
-        <div className="space-y-2">
+        <>
+          {/* Team coverage shortcuts */}
+          {teams.length > 0 && (
+            <div className="mb-5">
+              <div className="text-xs font-medium text-muted-foreground mb-2">Team role coverage</div>
+              <div className="flex flex-wrap gap-2">
+                {teams.map((t) => (
+                  <Link key={t.id} href={`/reports/team/${t.id}`}>
+                    <Badge variant="outline" className="cursor-pointer hover:bg-muted text-xs py-1 px-2.5">
+                      {t.name}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="text-xs font-medium text-muted-foreground mb-2">Students</div>
+          <div className="space-y-2">
           {filtered.map((u) => (
             <Link key={u.id} href={`/reports/${u.id}`}>
               <Card className="hover:bg-muted/40 transition-colors cursor-pointer">
@@ -93,7 +117,8 @@ export default function ReportsIndexPage() {
           {filtered.length === 0 && (
             <p className="text-sm text-muted-foreground">No students match “{q}”.</p>
           )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   )

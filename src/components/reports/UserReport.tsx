@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Target, Activity, ClipboardList, ArrowLeft } from 'lucide-react'
+import { Loader2, Target, Activity, ClipboardList, ArrowLeft, Download } from 'lucide-react'
 import Link from 'next/link'
 import { formatDateTime, getInitials } from '@/lib/utils'
 
@@ -129,6 +129,13 @@ export function UserReport({ userId }: { userId: string }) {
           <input type="checkbox" checked={inScopeOnly} onChange={(e) => setInScopeOnly(e.target.checked)} className="h-3 w-3" />
           Course roles only
         </label>
+        <a
+          href={`/api/users/${userId}/report/export?inScopeOnly=${inScopeOnly}`}
+          className="inline-flex items-center gap-1 text-xs border rounded-md px-2.5 py-1.5 hover:bg-muted transition-colors"
+          title="Download this report as a self-contained HTML file"
+        >
+          <Download className="h-3.5 w-3.5" /> Export HTML
+        </a>
       </div>
 
       {/* Alignment — the centerpiece */}
