@@ -21,6 +21,13 @@ export async function GET(
     }
 
     const targetId = params.id
+    // Observers may never view individual student reports.
+    if (session.user.role === 'OBSERVER') {
+      return NextResponse.json(
+        { error: 'Observers cannot view individual reports' },
+        { status: 403 }
+      )
+    }
     const isSelf = session.user.id === targetId
     const isAdmin = session.user.role === 'ADMIN'
 

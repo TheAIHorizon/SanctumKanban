@@ -80,9 +80,10 @@ interface TeamKanbanProps {
   team: Team
   currentUser: CurrentUser
   isTeamLead: boolean
+  isMember?: boolean
 }
 
-export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
+export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanbanProps) {
   const [showMembers, setShowMembers] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [tickets, setTickets] = useState(team.tickets)
@@ -91,7 +92,8 @@ export function TeamKanban({ team, currentUser, isTeamLead }: TeamKanbanProps) {
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  const canCreateTickets = isTeamLead || currentUser.role === 'ADMIN'
+  const canCreateTickets =
+    currentUser.role === 'ADMIN' || isTeamLead || (isMember ?? false)
 
   // Keyboard shortcuts
   useEffect(() => {

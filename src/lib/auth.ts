@@ -26,6 +26,11 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Invalid email or password')
         }
 
+        // Observer is a guest identity; it cannot be used with a password.
+        if (user.role === 'OBSERVER') {
+          throw new Error('Invalid email or password')
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.passwordHash
@@ -43,6 +48,45 @@ export const authOptions: NextAuthOptions = {
           color: user.color,
           firstName: user.firstName,
           lastName: user.lastName,
+        }
+      },
+    }),
+    // Passwordless guest login: read-only observer. Anyone can enter as the
+    // singleton OBSERVER identity without an account. It fails every write
+    // guard (enforced by can()) and cannot see individual student reports.
+    CredentialsProvider({
+      id: 'observer',
+      name: 'Observer',
+      credentials: {},
+      async authorize() {
+        // Reuse a single shared observer user; create it on first use.
+        let observer = await prisma.user.findFirst({
+          where: { role: 'OBSERVER' },
+        })
+        if (!observer) {
+          observer = await prisma.user.create({
+            data: {
+              email: 'observer@local',
+              // Random unusable hash; observer never logs in with a password.
+              passwordHash: await bcrypt.hash(
+                Math.random().toString(36) + Date.now(),
+                10
+              ),
+              firstName: 'Guest',
+              lastName: 'Observer',
+              role: 'OBSERVER',
+              color: '#64748b',
+            },
+          })
+        }
+        return {
+          id: observer.id,
+          email: observer.email,
+          name: 'Guest Observer',
+          role: observer.role,
+          color: observer.color,
+          firstName: observer.firstName,
+          lastName: observer.lastName,
         }
       },
     }),

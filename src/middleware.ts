@@ -4,11 +4,18 @@ import { NextResponse } from 'next/server'
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
-    const isAdmin = token?.role === 'ADMIN'
-    const isAdminRoute = req.nextUrl.pathname.startsWith('/admin')
+    const role = token?.role
+    const isAdmin = role === 'ADMIN'
+    const isObserver = role === 'OBSERVER'
+    const path = req.nextUrl.pathname
 
     // Protect admin routes
-    if (isAdminRoute && !isAdmin) {
+    if (path.startsWith('/admin') && !isAdmin) {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+
+    // Observers cannot view individual student reports (privacy).
+    if (isObserver && path.startsWith('/reports')) {
       return NextResponse.redirect(new URL('/', req.url))
     }
 
@@ -27,5 +34,6 @@ export const config = {
     '/teams/:path*',
     '/admin/:path*',
     '/profile/:path*',
+    '/reports/:path*',
   ],
 }

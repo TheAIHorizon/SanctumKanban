@@ -77,6 +77,11 @@ export function Header() {
         </nav>
 
         <div className="flex items-center space-x-2">
+          {user?.role === 'OBSERVER' && (
+            <span className="hidden sm:inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+              Observing · read only
+            </span>
+          )}
           <ThemeToggle />
           {user && (
             <DropdownMenu>

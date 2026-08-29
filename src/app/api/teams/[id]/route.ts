@@ -31,6 +31,7 @@ export async function GET(
           },
         },
         tickets: {
+          where: { archived: false },
           include: {
             assignee: {
               select: {

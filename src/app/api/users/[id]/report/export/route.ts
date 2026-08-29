@@ -31,6 +31,9 @@ export async function GET(
     }
 
     const targetId = params.id
+    if (session.user.role === 'OBSERVER') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     const isSelf = session.user.id === targetId
     const isAdmin = session.user.role === 'ADMIN'
     let isLeadOfTarget = false

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Kanban, Loader2 } from 'lucide-react'
+import { Kanban, Loader2, Eye } from 'lucide-react'
 
 function LoginForm() {
   const router = useRouter()
@@ -98,6 +98,38 @@ function LoginForm() {
             )}
           </Button>
         </form>
+
+        <div className="mt-4 pt-4 border-t">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={loading}
+            onClick={async () => {
+              setError('')
+              setLoading(true)
+              try {
+                const result = await signIn('observer', { redirect: false })
+                if (result?.error) {
+                  setError(result.error)
+                } else {
+                  router.push(callbackUrl)
+                  router.refresh()
+                }
+              } catch {
+                setError('An unexpected error occurred')
+              } finally {
+                setLoading(false)
+              }
+            }}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            Observe without signing in
+          </Button>
+          <p className="mt-2 text-xs text-muted-foreground text-center">
+            Read-only view of all team boards. No account needed.
+          </p>
+        </div>
       </CardContent>
     </Card>
   )

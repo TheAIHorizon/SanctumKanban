@@ -157,6 +157,7 @@ export function TeamGrid({ teams, currentUser }: TeamGridProps) {
             )
             const isTeamLead =
               currentUser.role === 'ADMIN' || userMembership?.role === 'LEAD'
+            const isMember = !!userMembership
 
             return (
               <TeamKanban
@@ -164,6 +165,7 @@ export function TeamGrid({ teams, currentUser }: TeamGridProps) {
                 team={team}
                 currentUser={currentUser}
                 isTeamLead={isTeamLead}
+                isMember={isMember}
               />
             )
           })}
@@ -178,12 +180,14 @@ export function TeamGrid({ teams, currentUser }: TeamGridProps) {
             )
             const isTeamLead =
               currentUser.role === 'ADMIN' || userMembership?.role === 'LEAD'
+            const isMember = !!userMembership
 
             return (
               <TeamKanban
                 team={focusedTeam}
                 currentUser={currentUser}
                 isTeamLead={isTeamLead}
+                isMember={isMember}
               />
             )
           })()}

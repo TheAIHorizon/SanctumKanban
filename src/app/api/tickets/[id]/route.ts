@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { can } from '@/lib/permissions'
 
 // GET - Get a single ticket
 export async function GET(
@@ -68,25 +69,8 @@ export async function GET(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
-    // Check if user has access to this ticket's team (same membership check
-    // used by PATCH/DELETE below)
-    if (session.user.role !== 'ADMIN') {
-      const membership = await prisma.teamMember.findUnique({
-        where: {
-          userId_teamId: {
-            userId: session.user.id,
-            teamId: ticket.teamId,
-          },
-        },
-      })
-
-      if (!membership) {
-        return NextResponse.json(
-          { error: 'You do not have access to this ticket' },
-          { status: 403 }
-        )
-      }
-    }
+    // Reading is allowed for any authenticated principal across all teams
+    // (cross-team visibility). Write actions remain gated in PATCH/DELETE.
 
     return NextResponse.json(ticket)
   } catch (error) {
@@ -125,14 +109,21 @@ export async function PATCH(
     }
 
     // Check permissions
-    const isAdmin = session.user.role === 'ADMIN'
     const membership = ticket.team.members.find(
       (m) => m.userId === session.user.id
     )
-    const isTeamLead = membership?.role === 'LEAD'
-    const isAssignee = ticket.assigneeId === session.user.id
-
-    if (!isAdmin && !isTeamLead && !isAssignee) {
+    if (
+      !can(
+        { id: session.user.id, role: session.user.role as any },
+        'ticket:update',
+        {
+          isMember: !!membership,
+          isLead: membership?.role === 'LEAD',
+          assigneeId: ticket.assigneeId,
+          createdById: ticket.createdById,
+        }
+      )
+    ) {
       return NextResponse.json(
         { error: 'You do not have permission to update this ticket' },
         { status: 403 }
@@ -227,7 +218,7 @@ export async function PATCH(
   }
 }
 
-// DELETE - Delete a ticket
+// DELETE - Archive a ticket (soft-delete). Admins may hard-delete with ?hard=true.
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -253,29 +244,62 @@ export async function DELETE(
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
-    // Check permissions - only admins and team leads can delete
-    const isAdmin = session.user.role === 'ADMIN'
+    const principal = { id: session.user.id, role: session.user.role as any }
     const membership = ticket.team.members.find(
       (m) => m.userId === session.user.id
     )
-    const isTeamLead = membership?.role === 'LEAD'
+    const ctx = {
+      isMember: !!membership,
+      isLead: membership?.role === 'LEAD',
+      assigneeId: ticket.assigneeId,
+      createdById: ticket.createdById,
+    }
 
-    if (!isAdmin && !isTeamLead) {
+    const hard = new URL(request.url).searchParams.get('hard') === 'true'
+
+    if (hard) {
+      // Permanent deletion is admin-only.
+      if (!can(principal, 'ticket:delete-hard', ctx)) {
+        return NextResponse.json(
+          { error: 'Only an admin can permanently delete a ticket' },
+          { status: 403 }
+        )
+      }
+      await prisma.ticket.delete({ where: { id: params.id } })
+      return NextResponse.json({ success: true, deleted: 'hard' })
+    }
+
+    // Soft-delete (archive): team lead or the ticket's creator (admin always).
+    if (!can(principal, 'ticket:archive', ctx)) {
       return NextResponse.json(
-        { error: 'You do not have permission to delete this ticket' },
+        { error: 'You do not have permission to archive this ticket' },
         { status: 403 }
       )
     }
 
-    await prisma.ticket.delete({
+    const archived = await prisma.ticket.update({
       where: { id: params.id },
+      data: {
+        archived: true,
+        archivedAt: new Date(),
+        archivedById: session.user.id,
+      },
     })
 
-    return NextResponse.json({ success: true })
+    // Record the archive in ticket history for the activity timeline.
+    await prisma.ticketHistory.create({
+      data: {
+        ticketId: ticket.id,
+        userId: session.user.id,
+        action: 'archived',
+      },
+    })
+
+    return NextResponse.json({ success: true, deleted: 'archived', ticket: archived })
   } catch (error) {
-    console.error('Failed to delete ticket:', error)
+    console.error('Failed to archive ticket:', error)
     return NextResponse.json(
-      { error: 'Failed to delete ticket' },
+      { error: 'Failed to archive ticket' },
       { status: 500 }
     )
   }

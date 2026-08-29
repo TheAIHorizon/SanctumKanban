@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { can } from '@/lib/permissions'
 
 // POST - Create a new ticket
 export async function POST(request: NextRequest) {
@@ -31,14 +32,30 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const isAdmin = session.user.role === 'ADMIN'
-    const isTeamLead = membership?.role === 'LEAD'
-
-    if (!isAdmin && !isTeamLead) {
+    if (
+      !can(
+        { id: session.user.id, role: session.user.role as any },
+        'ticket:create',
+        { isMember: !!membership, isLead: membership?.role === 'LEAD' }
+      )
+    ) {
       return NextResponse.json(
         { error: 'You do not have permission to create tickets for this team' },
         { status: 403 }
       )
+    }
+
+    // If an assignee is specified, they must belong to the same team.
+    if (assigneeId) {
+      const assigneeMembership = await prisma.teamMember.findUnique({
+        where: { userId_teamId: { userId: assigneeId, teamId } },
+      })
+      if (!assigneeMembership) {
+        return NextResponse.json(
+          { error: 'Assignee must be a member of this team' },
+          { status: 400 }
+        )
+      }
     }
 
     // Get the highest position in the column
@@ -113,6 +130,7 @@ export async function GET(request: NextRequest) {
     const teamId = searchParams.get('teamId')
     const assigneeId = searchParams.get('assigneeId')
     const status = searchParams.get('status')
+    const includeArchived = searchParams.get('includeArchived') === 'true'
 
     const where: any = {}
 
@@ -120,13 +138,10 @@ export async function GET(request: NextRequest) {
     if (assigneeId) where.assigneeId = assigneeId
     if (status) where.status = status
 
-    // Non-admins can only see tickets from their teams
-    if (session.user.role !== 'ADMIN') {
-      const userTeams = await prisma.teamMember.findMany({
-        where: { userId: session.user.id },
-        select: { teamId: true },
-      })
-      where.teamId = { in: userTeams.map((t) => t.teamId) }
+    // All authenticated principals (including observers) may read tickets
+    // across every team. Archived tickets are hidden unless an admin asks.
+    if (!(includeArchived && session.user.role === 'ADMIN')) {
+      where.archived = false
     }
 
     const tickets = await prisma.ticket.findMany({

@@ -24,46 +24,10 @@ async function getTeams(userId: string, role: string) {
     },
   }
 
-  if (role === 'ADMIN') {
-    // Admins can see all teams
-    return prisma.team.findMany({
-      include: {
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                color: true,
-              },
-            },
-          },
-        },
-        tickets: {
-          include: ticketInclude,
-          orderBy: [{ status: 'asc' }, { position: 'asc' }],
-        },
-        tags: true,
-        reflections: {
-          orderBy: { weekOf: 'desc' },
-          take: 1,
-        },
-      },
-      orderBy: { name: 'asc' },
-    })
-  }
-
-  // Team leads and members can only see their teams
+  // Everyone (admin, lead, member, observer) can SEE all teams' boards.
+  // Write permissions are enforced per-action in the API via can().
+  // Archived tickets are hidden from the boards.
   return prisma.team.findMany({
-    where: {
-      members: {
-        some: {
-          userId,
-        },
-      },
-    },
     include: {
       members: {
         include: {
@@ -79,6 +43,7 @@ async function getTeams(userId: string, role: string) {
         },
       },
       tickets: {
+        where: { archived: false },
         include: ticketInclude,
         orderBy: [{ status: 'asc' }, { position: 'asc' }],
       },
