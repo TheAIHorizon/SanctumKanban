@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag } from 'lucide-react'
+import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag, Target } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
 
@@ -38,6 +38,14 @@ export function Header() {
               Dashboard
             </Button>
           </Link>
+          {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEAD') && (
+            <Link href="/reports">
+              <Button variant="ghost" size="sm">
+                <Target className="h-4 w-4 mr-1" />
+                Reports
+              </Button>
+            </Link>
+          )}
           {user?.role === 'ADMIN' && (
             <>
               <Link href="/admin/teams">

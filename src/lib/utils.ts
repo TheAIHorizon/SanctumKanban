@@ -63,3 +63,15 @@ export function getWeekStart(date: Date = new Date()): Date {
 export function getInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
 }
+
+// Returns black or white for best contrast against a hex background color.
+export function getContrastColor(hexColor: string): string {
+  const hex = hexColor.replace('#', '')
+  if (hex.length < 6) return '#000000'
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  // Perceived luminance (YIQ)
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000
+  return yiq >= 128 ? '#000000' : '#ffffff'
+}
