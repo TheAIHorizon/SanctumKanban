@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DcwfTaskPicker } from '@/components/dcwf/DcwfTaskPicker'
 import { Loader2, Send, X, Plus, Trash2 } from 'lucide-react'
 import { getInitials, formatDate } from '@/lib/utils'
 
@@ -230,8 +231,9 @@ export function EditTicketDialog({
         </DialogHeader>
 
         <Tabs defaultValue="details" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="dcwf">DCWF</TabsTrigger>
             <TabsTrigger value="comments">
               Comments {comments.length > 0 && `(${comments.length})`}
             </TabsTrigger>
@@ -370,6 +372,13 @@ export function EditTicketDialog({
                 </Button>
               </DialogFooter>
             </form>
+          </TabsContent>
+
+          <TabsContent value="dcwf" className="flex-1 overflow-auto p-1">
+            <DcwfTaskPicker
+              ticketId={ticket.id}
+              suggestText={[title, description].filter(Boolean).join('. ')}
+            />
           </TabsContent>
 
           <TabsContent value="comments" className="flex-1 overflow-hidden flex flex-col">
