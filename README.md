@@ -33,8 +33,42 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 - **Announcements**: Global announcements banner for all teams
 - **User Activity Tracking**: Track ticket history and user activity over time
 - **Role-Based Access**: Admin, Team Lead, and Member roles with appropriate permissions
+- **DCWF Alignment** (see below): link tickets to DoD Cyber Workforce Framework tasks, add per-task reflections, and get per-student and per-team work-role alignment reports with AI-assisted task suggestions.
 - **Real-Time Updates (planned, not implemented)**: The app currently relies on `router.refresh()` after mutations and manual page reload to see other users' changes. An earlier Socket.IO prototype existed but was never wired up (client hook was never called, and the server ran with no authentication), so it has been removed. Live collaboration is on the roadmap.
 - **Self-Hosted**: Deploy on your own infrastructure with Docker
+
+## DCWF Alignment
+
+Sanctum Kanban can map student work to the **DoD Cyber Workforce Framework
+(DCWF)**. It's designed for instructors monitoring teams of students who build
+and defend an enterprise IT environment over a semester.
+
+**How it works**
+- Students link their tickets to DCWF **Tasks** (searchable, with a "course
+  roles only" filter) and add a short **reflection** per task ("what I did").
+- An optional **AI suggest** button proposes the closest DCWF tasks from the
+  ticket's text so logging stays low-friction.
+- **Reports** (instructor/admin + team leads): pick a student to see their
+  activity timeline, logged tasks with reflections, and a ranked **work-role
+  alignment** (colored by DCWF Element) — export any report as a self-contained
+  **HTML** file.
+- **Team coverage**: which course-relevant work roles a team is touching, who's
+  contributing to each, and which roles are **gaps** (no work logged yet).
+
+**Setup**
+```bash
+# 1. Import the DCWF reference data (bundled DCWF v5.2, or bring your own)
+npm run db:import-dcwf
+#    Docker: docker compose exec app npm run db:import-dcwf
+
+# 2. (Optional) enable AI task suggestions — see Environment Variables below.
+#    Without it, suggestions fall back to keyword search (never blocks logging).
+```
+
+The DCWF data and the bring-your-own-workbook JSON import format are documented
+in [`prisma/dcwf-data/README.md`](prisma/dcwf-data/README.md). A curated ~16
+"in-scope" work roles (enterprise build + week-13 pentest/hardening/IR) are the
+default report focus; all 76 roles remain available.
 
 ## Tech Stack
 
@@ -208,9 +242,17 @@ sanctum-kanban/
 | GET/POST | `/api/users` | List/create users |
 | GET/PATCH/DELETE | `/api/users/[id]` | User operations |
 | GET | `/api/users/[id]/activity` | User activity history |
+| GET | `/api/users/[id]/report` | Per-student report (timeline + tasks + alignment) |
+| GET | `/api/users/[id]/report/export` | Download student report as HTML |
 | GET/POST | `/api/announcements` | List/create announcements |
 | GET/PATCH/DELETE | `/api/announcements/[id]` | Announcement operations |
 | GET/POST | `/api/reflections` | Get/update reflections |
+| GET | `/api/dcwf/tasks` | Search DCWF tasks (type=Task) |
+| GET | `/api/dcwf/work-roles` | List DCWF work roles |
+| POST | `/api/dcwf/suggest` | AI-suggest DCWF tasks from text |
+| GET/POST | `/api/tickets/[id]/dcwf-tasks` | List/link DCWF tasks on a ticket |
+| PATCH/DELETE | `/api/ticket-dcwf-tasks/[id]` | Edit reflection note / unlink |
+| GET | `/api/teams/[id]/coverage` | Team DCWF role coverage + gaps |
 
 ## Configuration
 
@@ -224,6 +266,9 @@ sanctum-kanban/
 | `POSTGRES_USER` | DB username (Docker) | Docker only |
 | `POSTGRES_PASSWORD` | DB password (Docker) | Docker only |
 | `POSTGRES_DB` | Database name (Docker) | Docker only |
+| `AI_BASE_URL` | OpenAI-compatible endpoint for DCWF task suggestions (e.g. `http://localhost:11434/v1` for Ollama, an OpenWebUI URL, or a hosted API). Defaults to local Ollama. | No |
+| `AI_MODEL` | Model name for suggestions (e.g. `qwen3.8:27b`) | No |
+| `AI_API_KEY` | Bearer token, only if your AI endpoint requires one | No |
 
 ## Troubleshooting
 
