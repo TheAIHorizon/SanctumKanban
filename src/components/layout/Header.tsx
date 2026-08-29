@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag, Target } from 'lucide-react'
+import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag, Target, Wand2 } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
 
@@ -48,6 +48,12 @@ export function Header() {
           )}
           {user?.role === 'ADMIN' && (
             <>
+              <Link href="/admin/cohort-builder">
+                <Button variant="ghost" size="sm">
+                  <Wand2 className="h-4 w-4 mr-1" />
+                  Cohort Builder
+                </Button>
+              </Link>
               <Link href="/admin/teams">
                 <Button variant="ghost" size="sm">
                   <Users className="h-4 w-4 mr-1" />

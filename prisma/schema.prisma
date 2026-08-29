@@ -48,6 +48,7 @@ model User {
   assignedTickets Ticket[]         @relation("AssignedTickets")
   createdTickets  Ticket[]         @relation("CreatedTickets")
   archivedTickets Ticket[]         @relation("ArchivedTickets")
+  cohortsCreated  Cohort[]         @relation("CohortCreatedBy")
   ticketHistory   TicketHistory[]
   announcements   Announcement[]
   comments        Comment[]
@@ -324,4 +325,109 @@ model TicketDcwfTask {
   @@unique([ticketId, ksatId])
   @@index([ksatId])
   @@index([createdById])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cohort Builder: AI-assisted team formation from a placement survey.
+// A Cohort holds imported SurveyResponses; a CohortRun is one solve
+// (a chosen principle/weights) producing ProposedTeams the instructor
+// reviews and then provisions into real Teams + accounts.
+// ─────────────────────────────────────────────────────────────
+
+model Cohort {
+  id          String   @id @default(cuid())
+  name        String
+  term        String? // e.g. "Fall 2026"
+  teamSize    Int      @default(3)
+  notes       String?  @db.Text
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  provisioned Boolean  @default(false) // teams have been created from a run
+
+  createdBy User             @relation("CohortCreatedBy", fields: [createdById], references: [id])
+  responses SurveyResponse[]
+  runs      CohortRun[]
+
+  @@index([createdById])
+}
+
+// One student's normalized placement-survey answers.
+// Skill ratings and availability are stored as JSON for flexibility across
+// custom survey shapes; the importer maps CSV columns into these fields.
+model SurveyResponse {
+  id                String  @id @default(cuid())
+  cohortId          String
+  firstName         String
+  lastName          String
+  email             String
+  // JSON: { "network": 1-5, "windowsAd": 1-5, "linux": 1-5, "database": 1-5,
+  //         "web": 1-5, "programming": 1-5, "security": 1-5, "incident": 1-5 }
+  skills            Json
+  depthNote         String? @db.Text
+  aspirationRole    String? // DCWF work-role code, e.g. "541"
+  leadership        String? // "prefer" | "willing" | "no"
+  // JSON string[] of weekday names the student can meet
+  availDays         Json
+  timePref          String? // "morning" | "afternoon" | "evening" | "none"
+  workStyle         String? // "deep" | "generalist" | "coordination" | "flexible"
+  partnerRequest    String?
+  antiPartner       String?
+  constraints       String? @db.Text
+  // If this response has been provisioned into a real user, link it.
+  provisionedUserId String?
+
+  cohort          Cohort           @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  proposedMembers ProposedMember[]
+
+  @@index([cohortId])
+}
+
+// One solver execution: a principle/mode plus the weight vector used.
+model CohortRun {
+  id        String   @id @default(cuid())
+  cohortId  String
+  mode      String   @default("parity") // parity|coverage|mentorship|affinity|specialization|schedule|custom
+  // JSON weight vector: { skillParity, pillarCoverage, mentorBalance, requestsHonored, scheduleFit }
+  weights   Json
+  seed      Int      @default(0) // rng seed for reproducibility
+  score     Float? // final objective score
+  metrics   Json? // cohort-level metrics snapshot
+  watchList Json? // AI/solver-generated risk items
+  createdAt DateTime @default(now())
+
+  cohort Cohort         @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  teams  ProposedTeam[]
+
+  @@index([cohortId])
+}
+
+// A proposed team within a run (not yet a real Team until provisioned).
+model ProposedTeam {
+  id        String  @id @default(cuid())
+  runId     String
+  name      String
+  index     Int     @default(0)
+  isHolding Boolean @default(false) // an incomplete "holding" team
+  rationale String? @db.Text // AI-written "why these three"
+  metrics   Json? // coverage, sharedDays, anchors, etc.
+
+  run     CohortRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
+  members ProposedMember[]
+
+  @@index([runId])
+}
+
+model ProposedMember {
+  id             String  @id @default(cuid())
+  proposedTeamId String
+  responseId     String
+  isLead         Boolean @default(false)
+  teamRole       String? // short descriptor, e.g. "AD & domain lead"
+
+  proposedTeam ProposedTeam   @relation(fields: [proposedTeamId], references: [id], onDelete: Cascade)
+  response     SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@index([proposedTeamId])
+  @@index([responseId])
 }

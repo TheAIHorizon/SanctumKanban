@@ -13,7 +13,7 @@
 const AI_BASE_URL = process.env.AI_BASE_URL || 'http://localhost:11434/v1'
 const AI_MODEL = process.env.AI_MODEL || 'qwen3.8:27b'
 const AI_API_KEY = process.env.AI_API_KEY || ''
-const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '20000', 10)
+const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '90000', 10)
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
