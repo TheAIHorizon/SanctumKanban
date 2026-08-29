@@ -114,15 +114,50 @@ TicketHistory - Audit log for ticket changes
 Tag           - Labels for tickets (global or team-specific)
 TicketTag     - Junction: Ticket <-> Tag (many-to-many)
 Comment       - Threaded discussions on tickets
-Reflection    - Weekly team reflections (3 columns)
+Reflection    - Weekly team reflections (3 columns; optional ticketId link)
 Announcement  - Global announcements (can be pinned)
+
+DCWF (DoD Cyber Workforce Framework) — reference data + linking:
+DcwfElement    - Top category (IT, Cybersecurity, ...)
+DcwfWorkRole   - Work role (code+title, element, inScope flag)
+DcwfKsat       - KSAT: Task/Knowledge/Skill/Ability (ksatId is a STRING)
+DcwfRoleKsat   - Mapping: WorkRole <-> KSAT (Core/Additional/Unassigned)
+TicketDcwfTask - Links a Ticket to a DCWF Task + per-task reflection note
 ```
+
+### DCWF Alignment feature
+
+Maps student work to the DoD Cyber Workforce Framework. Key facts:
+
+- **Reference tables are seeded, read-only in the app.** Import with
+  `npm run db:import-dcwf` (`prisma/import-dcwf.ts`), which reads
+  `prisma/dcwf-data/*.json` OR a combined `--file`. Idempotent upserts.
+  Format + bring-your-own-workbook docs: `prisma/dcwf-data/README.md`.
+- **All DCWF ids are STRINGS** (`ksatId`, work-role `code`) — some carry
+  letter suffixes (`1027A`) or leading digits. Never cast to number.
+- **Only KSATs with `type === "Task"` are linkable** to tickets. The link API
+  enforces this.
+- **`inScope`** flags ~16 course-relevant roles (set in `import-dcwf.ts`
+  `IN_SCOPE_CODES`); reports/pickers default to these but expose all 76.
+- **Alignment engine**: `src/lib/dcwf-alignment.ts` — pure `scoreAlignment()`
+  (Core=2/Additional=1/Unassigned=0.5, dedupes tasks by id), DB-backed
+  `computeAlignment()` (per-user) and `computeTeamCoverage()` (per-team +
+  gaps). Attribution is by `TicketDcwfTask.createdById`.
+- **AI suggestions** (`src/lib/ai.ts`, `/api/dcwf/suggest`): provider-agnostic
+  OpenAI-compatible client (`AI_BASE_URL`/`AI_MODEL`/`AI_API_KEY`), defaults to
+  local Ollama per the Sanctum "local AI" principle. MUST degrade gracefully to
+  keyword search when unreachable — never block ticket logging.
+- **Reports**: `/reports` (picker), `/reports/[userId]` (student:
+  timeline + alignment + reflections, HTML export at
+  `/api/users/[id]/report/export`), `/reports/team/[teamId]` (coverage+gaps).
+  Visible to ADMIN + TEAM_LEAD.
 
 ### Key Relationships
 
 - User has many TeamMemberships, Tickets (assigned & created), TicketHistory, Comments
 - Team has many TeamMembers, Tickets, Reflections, Tags
 - Ticket belongs to Team, has optional Assignee (User), has History, Tags, Comments
+- Ticket has many TicketDcwfTask links; Reflection may optionally link to a Ticket
 - Tag can be global (teamId=null) or team-specific
 
 ## Authentication & Authorization
