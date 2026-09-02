@@ -57,6 +57,36 @@ async function main() {
     console.log('Created admin@example.com / admin123')
   }
 
+  // Put all populated demo boards in one class workspace.
+  let demoClass = await prisma.classWorkspace.findFirst({
+    where: { name: 'IST 4910 Demo Class', archivedAt: null },
+  })
+  if (!demoClass) {
+    demoClass = await prisma.classWorkspace.create({
+      data: {
+        name: 'IST 4910 Demo Class',
+        code: 'IST 4910',
+        term: 'Demo',
+        description: 'Populated demonstration class with varied team workloads and DCWF activity.',
+        createdById: admin.id,
+      },
+    })
+  }
+
+  // Keep the original sample team in the same demo class when base seed ran first.
+  await prisma.team.updateMany({
+    where: { id: 'sample-team-1' },
+    data: { classWorkspaceId: demoClass.id },
+  })
+  const sampleMembers = await prisma.teamMember.findMany({
+    where: { teamId: 'sample-team-1' },
+    select: { userId: true },
+  })
+  await prisma.classWorkspaceMember.createMany({
+    data: sampleMembers.map(({ userId }) => ({ classWorkspaceId: demoClass.id, userId })),
+    skipDuplicates: true,
+  })
+
   // DCWF data is required for the ticket↔task links that light up reports.
   const dcwfCount = await prisma.dcwfKsat.count()
   if (dcwfCount === 0) {
@@ -84,8 +114,8 @@ async function main() {
     await prisma.teamMember.deleteMany({ where: { teamId: team.id } }).catch(() => {})
     const t = await prisma.team.upsert({
       where: { id: team.id },
-      update: { name: team.name },
-      create: { id: team.id, name: team.name, description: `Enterprise network build — ${team.total} tasks` },
+      update: { name: team.name, classWorkspaceId: demoClass.id },
+      create: { id: team.id, name: team.name, description: `Enterprise network build — ${team.total} tasks`, classWorkspaceId: demoClass.id },
     })
 
     // 3 members
@@ -104,6 +134,11 @@ async function main() {
         },
       })
       await prisma.teamMember.create({ data: { teamId: t.id, userId: u.id, role: m === 0 ? 'LEAD' : 'MEMBER' } })
+      await prisma.classWorkspaceMember.upsert({
+        where: { classWorkspaceId_userId: { classWorkspaceId: demoClass.id, userId: u.id } },
+        update: {},
+        create: { classWorkspaceId: demoClass.id, userId: u.id },
+      })
       members.push({ id: u.id, theme })
     }
 
@@ -145,6 +180,12 @@ async function main() {
     }
     console.log(`${team.name}: ${team.total} tickets · members ${members.map((m, i) => `${m.theme.suffix}=${team.split[i]}`).join(' ')}`)
   }
+
+  // Remove an empty automatic legacy class if the app was opened before this
+  // demo seed moved all boards into IST 4910 Demo Class.
+  await prisma.classWorkspace.deleteMany({
+    where: { name: 'Current Class', teams: { none: {} } },
+  })
 
   const [teams, users, tickets, links] = await Promise.all([
     prisma.team.count(), prisma.user.count(), prisma.ticket.count(), prisma.ticketDcwfTask.count(),

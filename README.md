@@ -17,6 +17,8 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 
 ## Features
 
+- **Multi-Class Workspaces**: Run multiple classes/sections at once; each class has its own teams, board, reports, and Cohort Builder target.
+- **Class Archive**: Archive a completed class as a preserved, read-only board; restore it later or start a new clean class by copying only the old team layout.
 - **Multi-Team Kanban Boards**: Each team has its own kanban with Backlog, Doing, and Done columns
 - **Heat Map Overview**: Bird's eye view of all teams - see progress distribution and participation at a glance
 - **Drag-and-Drop**: Move tickets between columns with intuitive drag-and-drop
@@ -71,6 +73,24 @@ The DCWF data and the bring-your-own-workbook JSON import format are documented
 in [`prisma/dcwf-data/README.md`](prisma/dcwf-data/README.md). A curated ~16
 "in-scope" work roles (enterprise build + week-13 pentest/hardening/IR) are the
 default report focus; all 76 roles remain available.
+
+## Class Workspaces and Archiving
+
+A **Class Workspace** sits above teams. This lets one deployment host several
+course sections or terms at once without mixing their boards:
+
+- Admin → **Classes** creates, archives, restores, and opens classes.
+- The dashboard class selector shows one class's teams at a time.
+- Students see every team inside classes where they are enrolled, but not other
+  classes. Admins can switch across all classes. Observers may browse all active
+  classes read-only.
+- **Archive** preserves the teams, tickets, reflections, DCWF links, and reports,
+  removes the class from the active dashboard, and blocks all board writes.
+- **New class** can start empty or copy only another class's team names/layout;
+  no old students or tickets are copied.
+- Cohort Builder imports and provisions students into a selected active class.
+- Existing single-board installations upgrade safely: their current teams and
+  memberships are automatically placed into one default class on first use.
 
 ## Permissions
 
@@ -130,7 +150,7 @@ AI uses the same provider-agnostic config as DCWF suggestions (`AI_BASE_URL` / `
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit `.env` and set:
    - `DATABASE_URL`: Your PostgreSQL connection string
    - `NEXTAUTH_SECRET`: Generate with `openssl rand -base64 32`
@@ -307,7 +327,9 @@ sanctum-kanban/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET/POST | `/api/teams` | List/create teams |
+| GET/POST | `/api/classes` | List/create class workspaces |
+| GET/PATCH | `/api/classes/[id]` | Class detail; update/archive/restore |
+| GET/POST | `/api/teams` | List/create teams (scoped by `classId`) |
 | GET/PATCH/DELETE | `/api/teams/[id]` | Team operations |
 | POST/DELETE | `/api/teams/[id]/members` | Team membership |
 | GET/POST | `/api/tickets` | List/create tickets |

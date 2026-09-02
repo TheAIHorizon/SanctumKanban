@@ -58,11 +58,12 @@ interface CurrentUser {
 interface TeamGridProps {
   teams: Team[]
   currentUser: CurrentUser
+  readOnly?: boolean
 }
 
 type ViewMode = 'detailed' | 'overview' | 'focused'
 
-export function TeamGrid({ teams, currentUser }: TeamGridProps) {
+export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('detailed')
   const [focusedTeamId, setFocusedTeamId] = useState<string | null>(null)
 
@@ -156,14 +157,14 @@ export function TeamGrid({ teams, currentUser }: TeamGridProps) {
               (m) => m.userId === currentUser.id
             )
             const isTeamLead =
-              currentUser.role === 'ADMIN' || userMembership?.role === 'LEAD'
-            const isMember = !!userMembership
+              !readOnly && (currentUser.role === 'ADMIN' || userMembership?.role === 'LEAD')
+            const isMember = !readOnly && !!userMembership
 
             return (
               <TeamKanban
                 key={team.id}
                 team={team}
-                currentUser={currentUser}
+                currentUser={readOnly ? { ...currentUser, role: 'OBSERVER' } : currentUser}
                 isTeamLead={isTeamLead}
                 isMember={isMember}
               />
@@ -179,13 +180,13 @@ export function TeamGrid({ teams, currentUser }: TeamGridProps) {
               (m) => m.userId === currentUser.id
             )
             const isTeamLead =
-              currentUser.role === 'ADMIN' || userMembership?.role === 'LEAD'
-            const isMember = !!userMembership
+              !readOnly && (currentUser.role === 'ADMIN' || userMembership?.role === 'LEAD')
+            const isMember = !readOnly && !!userMembership
 
             return (
               <TeamKanban
                 team={focusedTeam}
-                currentUser={currentUser}
+                currentUser={readOnly ? { ...currentUser, role: 'OBSERVER' } : currentUser}
                 isTeamLead={isTeamLead}
                 isMember={isMember}
               />

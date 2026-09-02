@@ -19,11 +19,21 @@ export async function checkTicketPermission(
 ): Promise<TicketPermission> {
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    include: { team: { include: { members: true } } },
+    include: {
+      team: {
+        include: {
+          members: true,
+          classWorkspace: { select: { archivedAt: true } },
+        },
+      },
+    },
   })
 
   if (!ticket) {
     return { ok: false, status: 404, error: 'Ticket not found' }
+  }
+  if (ticket.team.classWorkspace?.archivedAt) {
+    return { ok: false, status: 409, error: 'Archived class boards are read-only' }
   }
 
   const isAdmin = userRole === 'ADMIN'

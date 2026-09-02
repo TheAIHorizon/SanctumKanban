@@ -40,10 +40,13 @@ interface Resp { id: string; firstName: string; lastName: string; email: string;
 interface Member { id: string; responseId: string; isLead: boolean; response: Resp }
 interface PTeam { id: string; name: string; index: number; isHolding: boolean; rationale?: string | null; metrics: any; members: Member[] }
 interface Run { id: string; mode: string; score: number; metrics: any; watchList: any[]; teams: PTeam[] }
-interface Cohort { id: string; name: string; term?: string | null; teamSize: number; provisioned: boolean; _count?: { responses: number; runs: number } }
+interface Cohort { id: string; name: string; term?: string | null; teamSize: number; provisioned: boolean; classWorkspace?: { id: string; name: string; archivedAt: string | null } | null; _count?: { responses: number; runs: number } }
+interface ClassWorkspace { id: string; name: string; term: string | null; _count: { teams: number } }
 
 export function CohortBuilder() {
   const [cohorts, setCohorts] = useState<Cohort[]>([])
+  const [classes, setClasses] = useState<ClassWorkspace[]>([])
+  const [selectedClassId, setSelectedClassId] = useState('')
   const [active, setActive] = useState<string | null>(null)
   const [responses, setResponses] = useState<Resp[]>([])
   const [run, setRun] = useState<Run | null>(null)
@@ -65,7 +68,15 @@ export function CohortBuilder() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { loadCohorts() }, [loadCohorts])
+  const loadClasses = useCallback(async () => {
+    const response = await fetch('/api/classes')
+    if (!response.ok) return
+    const data = await response.json()
+    setClasses(data)
+    setSelectedClassId((current) => current || data[0]?.id || '')
+  }, [])
+
+  useEffect(() => { loadCohorts(); loadClasses() }, [loadCohorts, loadClasses])
 
   const openCohort = useCallback(async (id: string) => {
     setActive(id); setRun(null); setMsg(null)
@@ -79,10 +90,11 @@ export function CohortBuilder() {
 
   async function createCohort() {
     if (!newName.trim()) { setMsg('Name required'); return }
+    if (!selectedClassId) { setMsg('Choose a class workspace first'); return }
     setBusy('create')
     const r = await fetch('/api/cohorts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName, term: newTerm || undefined, csv: csvText || undefined }),
+      body: JSON.stringify({ name: newName, term: newTerm || undefined, csv: csvText || undefined, classWorkspaceId: selectedClassId }),
     })
     setBusy(null)
     if (r.ok) {
@@ -205,7 +217,7 @@ export function CohortBuilder() {
               <button key={c.id} onClick={() => openCohort(c.id)}
                 className={`w-full text-left rounded-md border px-3 py-2 text-sm hover:bg-accent ${active === c.id ? 'border-primary bg-accent' : ''}`}>
                 <div className="font-medium">{c.name} {c.provisioned && <CheckCircle2 className="inline h-3.5 w-3.5 text-green-600" />}</div>
-                <div className="text-xs text-muted-foreground">{c.term} · {c._count?.responses ?? 0} responses · {c._count?.runs ?? 0} runs</div>
+                <div className="text-xs text-muted-foreground">{c.classWorkspace?.name || 'Unassigned'} · {c.term} · {c._count?.responses ?? 0} responses · {c._count?.runs ?? 0} runs</div>
               </button>
             ))}
           </CardContent>
@@ -214,6 +226,14 @@ export function CohortBuilder() {
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Upload className="h-4 w-4" /> New cohort</CardTitle></CardHeader>
           <CardContent className="space-y-3">
+            <div>
+              <Label>Class workspace</Label>
+              <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
+                {classes.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>{workspace.name}{workspace.term ? ` · ${workspace.term}` : ''}</option>
+                ))}
+              </select>
+            </div>
             <div><Label>Name</Label><Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="IST 4910 Fall 2026" /></div>
             <div><Label>Term (optional)</Label><Input value={newTerm} onChange={(e) => setNewTerm(e.target.value)} placeholder="Fall 2026" /></div>
             <div>

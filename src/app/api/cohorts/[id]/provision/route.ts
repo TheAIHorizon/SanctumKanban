@@ -30,6 +30,16 @@ export async function POST(
   if (!run || run.cohortId !== params.id) {
     return NextResponse.json({ error: 'Run not found for this cohort' }, { status: 404 })
   }
+  if (!run.cohort.classWorkspaceId) {
+    return NextResponse.json({ error: 'Assign this cohort to an active class before provisioning' }, { status: 400 })
+  }
+  const workspace = await prisma.classWorkspace.findUnique({
+    where: { id: run.cohort.classWorkspaceId },
+    select: { id: true, archivedAt: true },
+  })
+  if (!workspace || workspace.archivedAt) {
+    return NextResponse.json({ error: 'Cannot provision into an archived class' }, { status: 409 })
+  }
 
   const pwHash = await bcrypt.hash(TEMP_PASSWORD, 12)
   const palette = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
@@ -44,6 +54,7 @@ export async function POST(
       data: {
         name: `${run.cohort.name} — ${pteam.name}`,
         description: pteam.rationale?.slice(0, 500) || null,
+        classWorkspaceId: workspace.id,
       },
     })
     created.teams++
@@ -79,6 +90,16 @@ export async function POST(
         where: { userId_teamId: { userId: user.id, teamId: team.id } },
         update: { role: pm.isLead ? 'LEAD' : 'MEMBER' },
         create: { userId: user.id, teamId: team.id, role: pm.isLead ? 'LEAD' : 'MEMBER' },
+      })
+      await prisma.classWorkspaceMember.upsert({
+        where: {
+          classWorkspaceId_userId: {
+            classWorkspaceId: workspace.id,
+            userId: user.id,
+          },
+        },
+        update: {},
+        create: { classWorkspaceId: workspace.id, userId: user.id },
       })
 
       // Promote a lead's global role to TEAM_LEAD (if currently MEMBER).

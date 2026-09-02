@@ -46,10 +46,18 @@ interface Team {
   id: string
   name: string
   description: string | null
+  classWorkspace?: { id: string; name: string; archivedAt: string | null } | null
   members: TeamMember[]
   _count: {
     tickets: number
   }
+}
+
+interface ClassWorkspace {
+  id: string
+  name: string
+  term: string | null
+  _count: { teams: number }
 }
 
 export default function TeamsPage() {
@@ -57,8 +65,10 @@ export default function TeamsPage() {
   const { toast } = useToast()
   const [teams, setTeams] = useState<Team[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [classes, setClasses] = useState<ClassWorkspace[]>([])
+  const [selectedClassId, setSelectedClassId] = useState('')
   const [loading, setLoading] = useState(true)
-  
+
   // Team dialog
   const [teamDialogOpen, setTeamDialogOpen] = useState(false)
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
@@ -72,9 +82,10 @@ export default function TeamsPage() {
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedRole, setSelectedRole] = useState<'LEAD' | 'MEMBER'>('MEMBER')
 
-  const fetchTeams = async () => {
+  const fetchTeams = async (classId = selectedClassId) => {
+    if (!classId) { setTeams([]); return }
     try {
-      const response = await fetch('/api/teams')
+      const response = await fetch(`/api/teams?classId=${encodeURIComponent(classId)}`)
       if (response.ok) {
         const data = await response.json()
         setTeams(data)
@@ -98,10 +109,22 @@ export default function TeamsPage() {
     }
   }
 
+  const fetchClasses = async () => {
+    const response = await fetch('/api/classes')
+    if (!response.ok) return
+    const data = await response.json()
+    setClasses(data)
+    setSelectedClassId((current) => current || data[0]?.id || '')
+  }
+
   useEffect(() => {
-    fetchTeams()
+    fetchClasses()
     fetchUsers()
   }, [])
+
+  useEffect(() => {
+    if (selectedClassId) fetchTeams(selectedClassId)
+  }, [selectedClassId])
 
   const handleCreateTeam = () => {
     setEditingTeam(null)
@@ -131,6 +154,7 @@ export default function TeamsPage() {
         body: JSON.stringify({
           name: teamName,
           description: teamDescription || null,
+          ...(!editingTeam && { classWorkspaceId: selectedClassId }),
         }),
       })
 
@@ -272,14 +296,26 @@ export default function TeamsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Teams</h1>
           <p className="text-muted-foreground">
-            Manage teams and their members
+            Manage teams and their members inside one class workspace
           </p>
+          <select
+            value={selectedClassId}
+            onChange={(event) => setSelectedClassId(event.target.value)}
+            className="mt-3 rounded-md border bg-background px-3 py-2 text-sm"
+            aria-label="Class workspace"
+          >
+            {classes.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name}{workspace.term ? ` · ${workspace.term}` : ''}
+              </option>
+            ))}
+          </select>
         </div>
-        <Button onClick={handleCreateTeam}>
+        <Button onClick={handleCreateTeam} disabled={!selectedClassId}>
           <Plus className="h-4 w-4 mr-2" />
           New Team
         </Button>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { isTeamClassWritable } from '@/lib/class-workspaces.server'
 
 // GET - Get a single team
 export async function GET(
@@ -17,6 +18,9 @@ export async function GET(
     const team = await prisma.team.findUnique({
       where: { id: params.id },
       include: {
+        classWorkspace: {
+          include: { members: { select: { userId: true } } },
+        },
         members: {
           include: {
             user: {
@@ -55,10 +59,12 @@ export async function GET(
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
     }
 
-    // Check if user has access to this team
-    if (session.user.role !== 'ADMIN') {
-      const isMember = team.members.some((m) => m.userId === session.user.id)
-      if (!isMember) {
+    // Any enrolled class member can read every team in that class.
+    if (!['ADMIN', 'OBSERVER'].includes(session.user.role)) {
+      const isClassMember = team.classWorkspace?.members.some(
+        (member) => member.userId === session.user.id
+      )
+      if (!isClassMember) {
         return NextResponse.json(
           { error: 'You do not have access to this team' },
           { status: 403 }
@@ -89,6 +95,9 @@ export async function PATCH(
         { error: 'Only admins can update teams' },
         { status: 403 }
       )
+    }
+    if (!(await isTeamClassWritable(params.id))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     const body = await request.json()
@@ -143,6 +152,9 @@ export async function DELETE(
         { error: 'Only admins can delete teams' },
         { status: 403 }
       )
+    }
+    if (!(await isTeamClassWritable(params.id))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     await prisma.team.delete({

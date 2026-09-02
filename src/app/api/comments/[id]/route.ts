@@ -16,10 +16,14 @@ export async function DELETE(
 
     const comment = await prisma.comment.findUnique({
       where: { id: params.id },
+      include: { ticket: { include: { team: { include: { classWorkspace: true } } } } },
     })
 
     if (!comment) {
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
+    }
+    if (comment.ticket.team.classWorkspace?.archivedAt) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // Only comment author or admin can delete
@@ -51,10 +55,14 @@ export async function PATCH(
 
     const comment = await prisma.comment.findUnique({
       where: { id: params.id },
+      include: { ticket: { include: { team: { include: { classWorkspace: true } } } } },
     })
 
     if (!comment) {
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
+    }
+    if (comment.ticket.team.classWorkspace?.archivedAt) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // Only comment author can edit

@@ -3,8 +3,11 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { AnnouncementBanner } from '@/components/announcements/AnnouncementBanner'
 import { TeamGrid } from '@/components/dashboard/TeamGrid'
+import { ClassWorkspaceSwitcher } from '@/components/classes/ClassWorkspaceSwitcher'
+import { loadClassWorkspaceSummaries } from '@/lib/class-workspaces.server'
+import { selectClassWorkspace, visibleClassWorkspaces } from '@/lib/class-workspaces'
 
-async function getTeams(userId: string, role: string) {
+async function getTeams(classWorkspaceId: string) {
   const ticketInclude = {
     assignee: {
       select: {
@@ -28,6 +31,7 @@ async function getTeams(userId: string, role: string) {
   // Write permissions are enforced per-action in the API via can().
   // Archived tickets are hidden from the boards.
   return prisma.team.findMany({
+    where: { classWorkspaceId },
     include: {
       members: {
         include: {
@@ -82,22 +86,42 @@ async function getAnnouncements() {
   })
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { classId?: string; archived?: string }
+}) {
   const session = await getServerSession(authOptions)
-  
-  if (!session?.user) {
-    return null
-  }
+
+  if (!session?.user) return null
+
+  const archived = searchParams?.archived === '1'
+  const allClasses = await loadClassWorkspaceSummaries()
+  const visible = visibleClassWorkspaces(
+    allClasses.map((workspace) => ({
+      ...workspace,
+      memberUserIds: workspace.members.map((member) => member.userId),
+    })),
+    { id: session.user.id, role: session.user.role },
+    archived
+  )
+  const selected = selectClassWorkspace(visible, searchParams?.classId)
 
   const [teams, announcements] = await Promise.all([
-    getTeams(session.user.id, session.user.role),
+    selected ? getTeams(selected.id) : Promise.resolve([]),
     getAnnouncements(),
   ])
 
   return (
     <div className="space-y-6">
       <AnnouncementBanner announcements={announcements} />
-      <TeamGrid teams={teams} currentUser={session.user} />
+      <ClassWorkspaceSwitcher
+        classes={visible}
+        selectedId={selected?.id || null}
+        archived={archived}
+        canManage={session.user.role === 'ADMIN'}
+      />
+      <TeamGrid teams={teams} currentUser={session.user} readOnly={archived} />
     </div>
   )
 }

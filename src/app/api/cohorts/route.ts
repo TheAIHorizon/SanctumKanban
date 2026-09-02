@@ -10,7 +10,10 @@ export async function GET() {
 
   const cohorts = await prisma.cohort.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { responses: true, runs: true } } },
+    include: {
+      classWorkspace: { select: { id: true, name: true, archivedAt: true } },
+      _count: { select: { responses: true, runs: true } },
+    },
   })
   return NextResponse.json({ cohorts })
 }
@@ -22,8 +25,13 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { name, term, teamSize, csv } = body
+  const { name, term, teamSize, csv, classWorkspaceId } = body
   if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 })
+
+  const workspace = classWorkspaceId
+    ? await prisma.classWorkspace.findFirst({ where: { id: classWorkspaceId, archivedAt: null } })
+    : await prisma.classWorkspace.findFirst({ where: { archivedAt: null }, orderBy: { createdAt: 'desc' } })
+  if (!workspace) return NextResponse.json({ error: 'An active class workspace is required' }, { status: 400 })
 
   const cohort = await prisma.cohort.create({
     data: {
@@ -31,6 +39,7 @@ export async function POST(request: NextRequest) {
       term: term || null,
       teamSize: teamSize && teamSize >= 2 ? teamSize : 3,
       createdById: (session.user as any).id,
+      classWorkspaceId: workspace.id,
     },
   })
 

@@ -25,11 +25,14 @@ export async function POST(request: NextRequest) {
     // Check permissions
     const team = await prisma.team.findUnique({
       where: { id: teamId },
-      include: { members: true },
+      include: { members: true, classWorkspace: { select: { archivedAt: true } } },
     })
 
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+    }
+    if (team.classWorkspace?.archivedAt) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     const isAdmin = session.user.role === 'ADMIN'

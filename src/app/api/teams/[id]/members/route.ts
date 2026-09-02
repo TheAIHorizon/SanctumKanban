@@ -17,11 +17,14 @@ export async function POST(
     // Check permissions
     const team = await prisma.team.findUnique({
       where: { id: params.id },
-      include: { members: true },
+      include: { members: true, classWorkspace: { select: { id: true, archivedAt: true } } },
     })
 
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+    }
+    if (team.classWorkspace?.archivedAt) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     const isAdmin = session.user.role === 'ADMIN'
@@ -74,6 +77,19 @@ export async function POST(
       },
     })
 
+    if (team.classWorkspace?.id) {
+      await prisma.classWorkspaceMember.upsert({
+        where: {
+          classWorkspaceId_userId: {
+            classWorkspaceId: team.classWorkspace.id,
+            userId,
+          },
+        },
+        update: {},
+        create: { classWorkspaceId: team.classWorkspace.id, userId },
+      })
+    }
+
     return NextResponse.json(member)
   } catch (error) {
     console.error('Failed to add team member:', error)
@@ -108,11 +124,14 @@ export async function DELETE(
     // Check permissions
     const team = await prisma.team.findUnique({
       where: { id: params.id },
-      include: { members: true },
+      include: { members: true, classWorkspace: { select: { id: true, archivedAt: true } } },
     })
 
     if (!team) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 })
+    }
+    if (team.classWorkspace?.archivedAt) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     const isAdmin = session.user.role === 'ADMIN'

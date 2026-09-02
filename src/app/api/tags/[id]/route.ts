@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { isTeamClassWritable } from '@/lib/class-workspaces.server'
 
 // DELETE /api/tags/[id] - Delete a tag
 export async function DELETE(
@@ -20,6 +21,9 @@ export async function DELETE(
 
     if (!tag) {
       return NextResponse.json({ error: 'Tag not found' }, { status: 404 })
+    }
+    if (tag.teamId && !(await isTeamClassWritable(tag.teamId))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // Check permissions
@@ -70,6 +74,9 @@ export async function PATCH(
 
     if (!tag) {
       return NextResponse.json({ error: 'Tag not found' }, { status: 404 })
+    }
+    if (tag.teamId && !(await isTeamClassWritable(tag.teamId))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // Check permissions

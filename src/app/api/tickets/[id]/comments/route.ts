@@ -18,7 +18,14 @@ export async function GET(
     // (same check the POST handler below already performs)
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
-      include: { team: { include: { members: true } } },
+      include: {
+        team: {
+          include: {
+            members: true,
+            classWorkspace: { select: { archivedAt: true } },
+          },
+        },
+      },
     })
 
     if (!ticket) {
@@ -75,11 +82,21 @@ export async function POST(
     // Verify ticket exists and user has access
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
-      include: { team: { include: { members: true } } },
+      include: {
+        team: {
+          include: {
+            members: true,
+            classWorkspace: { select: { archivedAt: true } },
+          },
+        },
+      },
     })
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+    if (ticket.team.classWorkspace?.archivedAt) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // Check if user is admin or team member

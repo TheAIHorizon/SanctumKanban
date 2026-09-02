@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { can } from '@/lib/permissions'
+import { isTeamClassWritable } from '@/lib/class-workspaces.server'
 
 // GET - Get a single ticket
 export async function GET(
@@ -106,6 +107,9 @@ export async function PATCH(
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+    if (!(await isTeamClassWritable(ticket.teamId))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // Check permissions
@@ -242,6 +246,9 @@ export async function DELETE(
 
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+    if (!(await isTeamClassWritable(ticket.teamId))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     const principal = { id: session.user.id, role: session.user.role as any }

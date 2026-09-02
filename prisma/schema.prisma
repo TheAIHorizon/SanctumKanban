@@ -44,34 +44,76 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // Relations
-  teamMemberships TeamMember[]
-  assignedTickets Ticket[]         @relation("AssignedTickets")
-  createdTickets  Ticket[]         @relation("CreatedTickets")
-  archivedTickets Ticket[]         @relation("ArchivedTickets")
-  cohortsCreated  Cohort[]         @relation("CohortCreatedBy")
-  ticketHistory   TicketHistory[]
-  announcements   Announcement[]
-  comments        Comment[]
-  dcwfTaskLinks   TicketDcwfTask[]
+  teamMemberships  TeamMember[]
+  classMemberships ClassWorkspaceMember[]
+  classesCreated   ClassWorkspace[]       @relation("ClassWorkspaceCreatedBy")
+  assignedTickets  Ticket[]               @relation("AssignedTickets")
+  createdTickets   Ticket[]               @relation("CreatedTickets")
+  archivedTickets  Ticket[]               @relation("ArchivedTickets")
+  cohortsCreated   Cohort[]               @relation("CohortCreatedBy")
+  ticketHistory    TicketHistory[]
+  announcements    Announcement[]
+  comments         Comment[]
+  dcwfTaskLinks    TicketDcwfTask[]
 
   // NextAuth
   accounts Account[]
   sessions Session[]
 }
 
+// A class/section workspace contains its own set of team boards.
+// Archiving preserves all related teams/tickets/reports but makes the class
+// read-only and removes it from the active dashboard.
+model ClassWorkspace {
+  id          String    @id @default(cuid())
+  name        String
+  code        String?
+  term        String?
+  description String?
+  archivedAt  DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy User                   @relation("ClassWorkspaceCreatedBy", fields: [createdById], references: [id])
+  members   ClassWorkspaceMember[]
+  teams     Team[]
+  cohorts   Cohort[]
+
+  @@index([archivedAt])
+  @@index([createdById])
+}
+
+model ClassWorkspaceMember {
+  id               String   @id @default(cuid())
+  classWorkspaceId String
+  userId           String
+  createdAt        DateTime @default(now())
+
+  classWorkspace ClassWorkspace @relation(fields: [classWorkspaceId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classWorkspaceId, userId])
+  @@index([userId])
+}
+
 // Team model
 model Team {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  classWorkspaceId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relations
-  members     TeamMember[]
-  tickets     Ticket[]
-  reflections Reflection[]
-  tags        Tag[]
+  classWorkspace ClassWorkspace? @relation(fields: [classWorkspaceId], references: [id], onDelete: Cascade)
+  members        TeamMember[]
+  tickets        Ticket[]
+  reflections    Reflection[]
+  tags           Tag[]
+
+  @@index([classWorkspaceId])
 }
 
 // Junction table for User-Team many-to-many relationship
@@ -335,21 +377,24 @@ model TicketDcwfTask {
 // ─────────────────────────────────────────────────────────────
 
 model Cohort {
-  id          String   @id @default(cuid())
-  name        String
-  term        String? // e.g. "Fall 2026"
-  teamSize    Int      @default(3)
-  notes       String?  @db.Text
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  provisioned Boolean  @default(false) // teams have been created from a run
+  id               String   @id @default(cuid())
+  name             String
+  term             String? // e.g. "Fall 2026"
+  teamSize         Int      @default(3)
+  notes            String?  @db.Text
+  createdById      String
+  classWorkspaceId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  provisioned      Boolean  @default(false) // teams have been created from a run
 
-  createdBy User             @relation("CohortCreatedBy", fields: [createdById], references: [id])
-  responses SurveyResponse[]
-  runs      CohortRun[]
+  createdBy      User             @relation("CohortCreatedBy", fields: [createdById], references: [id])
+  classWorkspace ClassWorkspace?  @relation(fields: [classWorkspaceId], references: [id], onDelete: SetNull)
+  responses      SurveyResponse[]
+  runs           CohortRun[]
 
   @@index([createdById])
+  @@index([classWorkspaceId])
 }
 
 // One student's normalized placement-survey answers.

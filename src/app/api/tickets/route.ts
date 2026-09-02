@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { can } from '@/lib/permissions'
+import { isTeamClassWritable } from '@/lib/class-workspaces.server'
 
 // POST - Create a new ticket
 export async function POST(request: NextRequest) {
@@ -20,6 +21,9 @@ export async function POST(request: NextRequest) {
         { error: 'Title and team ID are required' },
         { status: 400 }
       )
+    }
+    if (!(await isTeamClassWritable(teamId))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // Check if user has permission to create tickets for this team

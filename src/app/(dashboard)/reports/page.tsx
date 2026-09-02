@@ -15,28 +15,41 @@ interface UserItem {
   email: string
   color: string
   role: string
-  teamMemberships?: { role: string; team: { id: string; name: string } }[]
+  teamMemberships?: { role: string; team: { id: string; name: string; classWorkspaceId: string | null } }[]
 }
 
 export default function ReportsIndexPage() {
   const [users, setUsers] = useState<UserItem[]>([])
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
+  const [classes, setClasses] = useState<{ id: string; name: string; term: string | null }[]>([])
+  const [classId, setClassId] = useState('')
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
 
   useEffect(() => {
     Promise.all([
       fetch('/api/users').then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/teams').then((r) => (r.ok ? r.json() : [])),
+      fetch('/api/classes').then((r) => (r.ok ? r.json() : [])),
     ])
-      .then(([u, t]) => {
+      .then(([u, c]) => {
         setUsers(Array.isArray(u) ? u : u.users || [])
-        setTeams(Array.isArray(t) ? t : t.teams || [])
+        const list = Array.isArray(c) ? c : []
+        setClasses(list)
+        setClassId(list[0]?.id || '')
       })
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    if (!classId) { setTeams([]); return }
+    fetch(`/api/teams?classId=${encodeURIComponent(classId)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((t) => setTeams(Array.isArray(t) ? t : t.teams || []))
+  }, [classId])
+
   const filtered = users.filter((u) => {
+    const inClass = u.teamMemberships?.some((m) => m.team.classWorkspaceId === classId)
+    if (!inClass) return false
     const s = `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase()
     return s.includes(q.toLowerCase())
   })
@@ -51,6 +64,15 @@ export default function ReportsIndexPage() {
         Select a student to see their activity timeline, logged DCWF tasks, and
         work-role alignment.
       </p>
+
+      <div className="mb-4">
+        <label className="text-xs font-medium text-muted-foreground">Class workspace</label>
+        <select value={classId} onChange={(e) => setClassId(e.target.value)} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm">
+          {classes.map((workspace) => (
+            <option key={workspace.id} value={workspace.id}>{workspace.name}{workspace.term ? ` · ${workspace.term}` : ''}</option>
+          ))}
+        </select>
+      </div>
 
       <div className="relative mb-4">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

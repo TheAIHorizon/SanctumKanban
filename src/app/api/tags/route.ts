@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { isTeamClassWritable } from '@/lib/class-workspaces.server'
 
 // GET /api/tags - Get all tags (global + team-specific)
 export async function GET(request: Request) {
@@ -69,6 +70,9 @@ export async function POST(request: Request) {
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+    if (teamId && !(await isTeamClassWritable(teamId))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // If team-specific, verify user has access
