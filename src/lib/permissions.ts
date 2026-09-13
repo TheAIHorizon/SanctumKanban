@@ -90,11 +90,11 @@ export function can(
 
     case 'ticket:update':
       // Lead of the team, or the ticket's assignee/creator.
-      return !observer && (lead || assignee || creator)
+      return !observer && member && (lead || assignee || creator)
 
     case 'ticket:archive':
       // Soft-delete: lead of the team, or the creator of the ticket.
-      return !observer && (lead || creator)
+      return !observer && member && (lead || creator)
 
     case 'ticket:delete-hard':
       // Permanent deletion is admin-only (handled by the admin shortcut above).

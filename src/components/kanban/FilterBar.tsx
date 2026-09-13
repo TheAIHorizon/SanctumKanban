@@ -1,4 +1,5 @@
 'use client'
+import { canFilterMyTickets } from '@/lib/ticket-form-options'
 
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
@@ -132,6 +133,7 @@ export function FilterBar({
       </div>
 
       {/* My Tickets Toggle */}
+      {canFilterMyTickets(members, currentUserId) && (
       <Button
         variant={filters.myTicketsOnly ? 'default' : 'outline'}
         size="sm"
@@ -141,6 +143,7 @@ export function FilterBar({
         <User className="h-4 w-4 mr-1" />
         My Tickets
       </Button>
+      )}
 
       {/* Filters Popover */}
       <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>

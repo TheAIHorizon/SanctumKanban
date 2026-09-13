@@ -17,6 +17,15 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 
 ## Features
 
+### User and GA documentation
+
+- [User manual (offline HTML)](docs/user-manual.html)
+- [GA system check and acceptance checklist (offline HTML)](docs/ga-system-check.html)
+- [Code-review findings and remaining work (offline HTML)](docs/code-review.html)
+- Run `npm run check:system` for tests, lint, and a production build. Stop the local app first: development and production builds share `.next`.
+- The guarded `npm run test:integration` is for the isolated GA test database only, never the live class database. See the checklist for prerequisites.
+
+
 - **Multi-Class Workspaces**: Run multiple classes/sections at once; each class has its own teams, board, reports, and Cohort Builder target.
 - **Class Archive**: Archive a completed class as a preserved, read-only board; restore it later or start a new clean class by copying only the old team layout.
 - **Multi-Team Kanban Boards**: Each team has its own kanban with Backlog, Doing, and Done columns

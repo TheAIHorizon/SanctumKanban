@@ -59,10 +59,15 @@ export const authOptions: NextAuthOptions = {
       name: 'Observer',
       credentials: {},
       async authorize() {
-        // Reuse a single shared observer user; create it on first use.
-        let observer = await prisma.user.findFirst({
-          where: { role: 'OBSERVER' },
+        // Use only the dedicated guest identity. Selecting an arbitrary
+        // OBSERVER account could expose that account's profile and activity to
+        // anyone using passwordless guest login.
+        let observer = await prisma.user.findUnique({
+          where: { email: 'observer@local' },
         })
+        if (observer && observer.role !== 'OBSERVER') {
+          throw new Error('Guest observer identity is invalid')
+        }
         if (!observer) {
           observer = await prisma.user.create({
             data: {
@@ -93,33 +98,51 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
-    // JWT sessions are not revoked server-side (no DB lookup on each
-    // request), so a long maxAge means a stolen/leaked token, or a
-    // deactivated/role-changed user, stays valid for the full duration.
-    // 24h caps the blast radius of a leaked token to a single day, and
-    // updateAge re-issues the JWT (refreshing its expiry) whenever the
-    // session is used and is more than 1h old, so active users are not
-    // forced to re-login constantly.
-    // Tradeoff: role/permission changes made by an admin can still take
-    // up to ~1h to apply to a user's live token (jwt() callback is only
-    // re-run on that rolling refresh) rather than instantly.
+    // The jwt callback below refreshes authorization from the database on
+    // every session read, so role changes and deletions take effect promptly.
     maxAge: 24 * 60 * 60, // 24 hours
-    updateAge: 60 * 60, // re-issue token after 1 hour of activity
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
         token.role = (user as any).role
         token.color = (user as any).color
         token.firstName = (user as any).firstName
         token.lastName = (user as any).lastName
+        token.guestObserver = account?.provider === 'observer'
+        return token
       }
+
+      if (!token.id) throw new Error('Authenticated user id is missing')
+
+      const currentUser = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          color: true,
+          firstName: true,
+          lastName: true,
+        },
+      })
+      if (!currentUser) throw new Error('Authenticated user no longer exists')
+      if (token.guestObserver && currentUser.role !== 'OBSERVER') {
+        throw new Error('Guest observer identity is invalid')
+      }
+
+      token.email = currentUser.email
+      token.role = currentUser.role
+      token.color = currentUser.color
+      token.firstName = currentUser.firstName
+      token.lastName = currentUser.lastName
       return token
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id
+        ;(session.user as any).email = token.email
         ;(session.user as any).role = token.role
         ;(session.user as any).color = token.color
         ;(session.user as any).firstName = token.firstName

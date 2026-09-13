@@ -4,8 +4,10 @@ import prisma from '@/lib/prisma'
 import { AnnouncementBanner } from '@/components/announcements/AnnouncementBanner'
 import { TeamGrid } from '@/components/dashboard/TeamGrid'
 import { ClassWorkspaceSwitcher } from '@/components/classes/ClassWorkspaceSwitcher'
+import { StudentResources } from '@/components/resources/StudentResources'
 import { loadClassWorkspaceSummaries } from '@/lib/class-workspaces.server'
 import { selectClassWorkspace, visibleClassWorkspaces } from '@/lib/class-workspaces'
+import { withGlobalTags } from '@/lib/dashboard-tags'
 
 async function getTeams(classWorkspaceId: string) {
   const ticketInclude = {
@@ -86,6 +88,13 @@ async function getAnnouncements() {
   })
 }
 
+async function getResources(classWorkspaceId: string) {
+  return prisma.classResource.findMany({
+    where: { classWorkspaceId },
+    select: { key: true, url: true },
+  })
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -107,13 +116,16 @@ export default async function DashboardPage({
   )
   const selected = selectClassWorkspace(visible, searchParams?.classId)
 
-  const [teams, announcements] = await Promise.all([
+  const [teams, announcements, resources, globalTags] = await Promise.all([
     selected ? getTeams(selected.id) : Promise.resolve([]),
     getAnnouncements(),
+    selected ? getResources(selected.id) : Promise.resolve([]),
+    prisma.tag.findMany({ where: { teamId: null }, orderBy: { name: 'asc' } }),
   ])
 
   return (
     <div className="space-y-6">
+      <StudentResources resources={resources} />
       <AnnouncementBanner announcements={announcements} />
       <ClassWorkspaceSwitcher
         classes={visible}
@@ -121,7 +133,7 @@ export default async function DashboardPage({
         archived={archived}
         canManage={session.user.role === 'ADMIN'}
       />
-      <TeamGrid teams={teams} currentUser={session.user} readOnly={archived} />
+      <TeamGrid teams={withGlobalTags(teams, globalTags)} currentUser={session.user} readOnly={archived} />
     </div>
   )
 }

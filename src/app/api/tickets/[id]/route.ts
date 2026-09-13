@@ -108,6 +108,9 @@ export async function PATCH(
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
+    if (ticket.archived) {
+      return NextResponse.json({ error: 'Archived tickets are read-only' }, { status: 409 })
+    }
     if (!(await isTeamClassWritable(ticket.teamId))) {
       return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
@@ -135,7 +138,14 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, description, status, assigneeId, position, dueDate, tagIds } = body
+    const { title, description, status, assigneeId, dueDate, tagIds } = body
+
+    if (body.position !== undefined) {
+      return NextResponse.json(
+        { error: 'Use the reorder endpoint to change ticket positions' },
+        { status: 400 }
+      )
+    }
 
     // Track status change for history
     const statusChanged = status && status !== ticket.status
@@ -164,7 +174,6 @@ export async function PATCH(
         ...(description !== undefined && { description }),
         ...(status !== undefined && { status }),
         ...(assigneeId !== undefined && { assigneeId }),
-        ...(position !== undefined && { position }),
         ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
       },
       include: {
@@ -247,10 +256,6 @@ export async function DELETE(
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
-    if (!(await isTeamClassWritable(ticket.teamId))) {
-      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
-    }
-
     const principal = { id: session.user.id, role: session.user.role as any }
     const membership = ticket.team.members.find(
       (m) => m.userId === session.user.id
@@ -265,15 +270,25 @@ export async function DELETE(
     const hard = new URL(request.url).searchParams.get('hard') === 'true'
 
     if (hard) {
-      // Permanent deletion is admin-only.
+      // Permanent deletion is admin-only, including for archived tickets.
       if (!can(principal, 'ticket:delete-hard', ctx)) {
         return NextResponse.json(
           { error: 'Only an admin can permanently delete a ticket' },
           { status: 403 }
         )
       }
+      if (!(await isTeamClassWritable(ticket.teamId))) {
+        return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
+      }
       await prisma.ticket.delete({ where: { id: params.id } })
       return NextResponse.json({ success: true, deleted: 'hard' })
+    }
+
+    if (ticket.archived) {
+      return NextResponse.json({ error: 'Archived tickets are read-only' }, { status: 409 })
+    }
+    if (!(await isTeamClassWritable(ticket.teamId))) {
+      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
     // Soft-delete (archive): team lead or the ticket's creator (admin always).

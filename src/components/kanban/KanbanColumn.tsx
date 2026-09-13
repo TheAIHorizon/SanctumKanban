@@ -1,6 +1,7 @@
 'use client'
 
 import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { TicketCard } from './TicketCard'
 import { cn } from '@/lib/utils'
 
@@ -89,27 +90,32 @@ export function KanbanColumn({
         </span>
       </div>
 
-      <div className="space-y-2 min-h-[100px]">
-        {tickets.map((ticket) => (
-          <TicketCard
-            key={ticket.id}
-            ticket={ticket}
-            members={members}
-            tags={tags}
-            currentUser={currentUser}
-            isTeamLead={isTeamLead}
-            compactView={compactView}
-            onTicketUpdated={onTicketUpdated}
-            onTicketDeleted={onTicketDeleted}
-          />
-        ))}
+      <SortableContext
+        items={tickets.map((ticket) => ticket.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-2 min-h-[100px]">
+          {tickets.map((ticket) => (
+            <TicketCard
+              key={ticket.id}
+              ticket={ticket}
+              members={members}
+              tags={tags}
+              currentUser={currentUser}
+              isTeamLead={isTeamLead}
+              compactView={compactView}
+              onTicketUpdated={onTicketUpdated}
+              onTicketDeleted={onTicketDeleted}
+            />
+          ))}
 
-        {tickets.length === 0 && (
-          <div className="text-center text-sm text-muted-foreground py-4">
-            Drop tickets here
-          </div>
-        )}
-      </div>
+          {tickets.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground py-4">
+              Drop tickets here
+            </div>
+          )}
+        </div>
+      </SortableContext>
     </div>
   )
 }

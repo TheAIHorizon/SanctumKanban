@@ -1,4 +1,5 @@
 'use client'
+import { assigneeFromSelection } from '@/lib/ticket-form-options'
 
 import { useState } from 'react'
 import {
@@ -146,7 +147,7 @@ export function CreateTicketDialog({
           title,
           description: description || null,
           teamId,
-          assigneeId: assigneeId || null,
+          assigneeId: assigneeFromSelection(assigneeId),
           status: 'BACKLOG',
           dueDate: dueDate || null,
           tagIds: selectedTagIds,

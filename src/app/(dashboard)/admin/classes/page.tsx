@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Archive, ArchiveRestore, BookOpen, Copy, Loader2, Plus } from 'lucide-react'
+import { Archive, ArchiveRestore, BookOpen, Copy, Link2, Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { ClassResourceEditor } from '@/components/resources/ClassResourceEditor'
 
 interface Workspace {
   id: string
@@ -32,6 +33,7 @@ export default function ClassesPage() {
   const [term, setTerm] = useState('')
   const [description, setDescription] = useState('')
   const [copyFrom, setCopyFrom] = useState('')
+  const [resourceClassId, setResourceClassId] = useState<string | null>(null)
 
   const load = async () => {
     const [a, old] = await Promise.all([
@@ -96,9 +98,26 @@ export default function ClassesPage() {
       </CardHeader>
       <CardContent>
         {workspace.description && <p className="text-sm text-muted-foreground mb-3">{workspace.description}</p>}
-        <Link href={`/?classId=${workspace.id}${isArchived ? '&archived=1' : ''}`}>
-          <Button variant="secondary" size="sm"><BookOpen className="mr-1 h-4 w-4" />Open board</Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {!isArchived && (
+            <Link href={`/admin/classes/${workspace.id}/deliverables`}>
+              <Button variant="outline" size="sm">Deliverables</Button>
+            </Link>
+          )}
+          <Link href={`/?classId=${workspace.id}${isArchived ? '&archived=1' : ''}`}>
+            <Button variant="secondary" size="sm"><BookOpen className="mr-1 h-4 w-4" />Open board</Button>
+          </Link>
+          {!isArchived && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setResourceClassId((current) => current === workspace.id ? null : workspace.id)}
+            >
+              <Link2 className="mr-1 h-4 w-4" />Student resources
+            </Button>
+          )}
+        </div>
+        {resourceClassId === workspace.id && <ClassResourceEditor key={workspace.id} classId={workspace.id} />}
       </CardContent>
     </Card>
   )

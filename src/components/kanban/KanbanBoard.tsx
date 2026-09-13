@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragEndEvent,
@@ -13,6 +14,12 @@ import {
 } from '@dnd-kit/core'
 import { KanbanColumn } from './KanbanColumn'
 import { TicketCard } from './TicketCard'
+import {
+  buildVisibleTicketPositionUpdates,
+  type TicketPositionUpdate,
+} from '@/lib/ticket-reorder'
+import { useToast } from '@/hooks/use-toast'
+import { can, type Role } from '@/lib/permissions'
 
 interface User {
   id: string
@@ -42,6 +49,7 @@ interface Ticket {
   position: number
   dueDate?: string | null
   assignee: User | null
+  createdById?: string | null
   teamId: string
   tags?: { tag: Tag }[]
   _count?: { comments: number }
@@ -58,7 +66,7 @@ interface HideColumns {
   DONE: boolean
 }
 
-interface KanbanBoardProps {
+export interface KanbanBoardProps {
   teamId: string
   tickets: Ticket[]
   members: TeamMember[]
@@ -69,6 +77,8 @@ interface KanbanBoardProps {
   hideColumns?: HideColumns
   onTicketUpdated: (ticket: Ticket) => void
   onTicketDeleted: (ticketId: string) => void
+  /** Update the parent board's complete ticket list, including filtered-out tickets. */
+  onTicketsReordered?: (positions: TicketPositionUpdate[]) => void
 }
 
 const COLUMNS = [
@@ -94,8 +104,12 @@ export function KanbanBoard({
   hideColumns = defaultHideColumns,
   onTicketUpdated,
   onTicketDeleted,
+  onTicketsReordered,
 }: KanbanBoardProps) {
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null)
+  const dragMutationInFlight = useRef(false)
+  const router = useRouter()
+  const { toast } = useToast()
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -106,11 +120,30 @@ export function KanbanBoard({
   )
 
   const canMoveTicket = (ticket: Ticket) => {
-    if (currentUser.role === 'ADMIN' || isTeamLead) return true
-    return ticket.assignee?.id === currentUser.id
+    return can({ id: currentUser.id, role: currentUser.role as Role }, 'ticket:update', {
+      isMember: members.some((member) => member.userId === currentUser.id),
+      isLead: isTeamLead,
+      assigneeId: ticket.assignee?.id,
+      createdById: ticket.createdById,
+    })
+  }
+
+  const applyPositions = (positions: TicketPositionUpdate[]) => {
+    if (onTicketsReordered) {
+      onTicketsReordered(positions)
+      return
+    }
+
+    // Compatibility fallback until TeamKanban wires the batch callback. It can
+    // only update tickets currently visible to this filtered board.
+    positions.forEach(({ id, position }) => {
+      const visibleTicket = tickets.find((candidate) => candidate.id === id)
+      if (visibleTicket) onTicketUpdated({ ...visibleTicket, position })
+    })
   }
 
   const handleDragStart = (event: DragStartEvent) => {
+    if (dragMutationInFlight.current) return
     const ticket = tickets.find((t) => t.id === event.active.id)
     if (ticket && canMoveTicket(ticket)) {
       setActiveTicket(ticket)
@@ -124,12 +157,61 @@ export function KanbanBoard({
     if (!over) return
 
     const ticketId = active.id as string
-    const newStatus = over.id as 'BACKLOG' | 'DOING' | 'DONE'
-
     const ticket = tickets.find((t) => t.id === ticketId)
-    if (!ticket || ticket.status === newStatus) return
+    if (!ticket || !canMoveTicket(ticket)) return
 
-    if (!canMoveTicket(ticket)) return
+    const targetTicket = tickets.find((candidate) => candidate.id === over.id)
+    const newStatus = targetTicket?.status ?? (
+      COLUMNS.some((column) => column.id === over.id)
+        ? over.id as Ticket['status']
+        : null
+    )
+    if (!newStatus) return
+
+    if (ticket.status === newStatus) {
+      if (!targetTicket || targetTicket.id === ticket.id) return
+      if (dragMutationInFlight.current) return
+      dragMutationInFlight.current = true
+
+      const visibleColumnTickets = tickets
+        .filter((candidate) => candidate.status === ticket.status)
+        .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))
+      const originalPositions = visibleColumnTickets.map(({ id, position }) => ({ id, position }))
+      const optimisticPositions = buildVisibleTicketPositionUpdates(
+        visibleColumnTickets,
+        ticket.id,
+        targetTicket.id
+      )
+      applyPositions(optimisticPositions)
+
+      try {
+        const response = await fetch(`/api/tickets/${ticketId}/reorder`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetTicketId: targetTicket.id }),
+        })
+        if (!response.ok) throw new Error('Failed to reorder ticket')
+
+        const result = await response.json()
+        if (!Array.isArray(result.positions)) throw new Error('Invalid reorder response')
+        applyPositions(result.positions)
+      } catch (error) {
+        applyPositions(originalPositions)
+        router.refresh()
+        toast({
+          title: 'Ticket order was not saved',
+          description: 'The previous order has been restored.',
+          variant: 'destructive',
+        })
+        console.error('Failed to reorder ticket:', error)
+      } finally {
+        dragMutationInFlight.current = false
+      }
+      return
+    }
+
+    if (dragMutationInFlight.current) return
+    dragMutationInFlight.current = true
 
     // Optimistically update the UI
     const updatedTicket = { ...ticket, status: newStatus }
@@ -143,15 +225,15 @@ export function KanbanBoard({
         body: JSON.stringify({ status: newStatus }),
       })
 
-      if (!response.ok) {
-        // Revert on error
-        onTicketUpdated(ticket)
-        console.error('Failed to update ticket')
-      }
+      if (!response.ok) throw new Error('Failed to update ticket')
     } catch (error) {
       // Revert on error
       onTicketUpdated(ticket)
+      router.refresh()
       console.error('Failed to update ticket:', error)
+      toast({ title: 'Ticket move was not saved', variant: 'destructive' })
+    } finally {
+      dragMutationInFlight.current = false
     }
   }
 

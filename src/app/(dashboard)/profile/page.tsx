@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { getInitials, formatDateTime } from '@/lib/utils'
+import { canAccessProfileSettings } from '@/lib/user-profile-security'
 import { Loader2, Save, Eye, EyeOff, Activity } from 'lucide-react'
 
 interface ActivityItem {
@@ -38,6 +39,7 @@ export default function ProfilePage() {
   const { data: session, update } = useSession()
   const { toast } = useToast()
   const user = session?.user
+  const canEditProfile = canAccessProfileSettings(user?.role)
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -82,7 +84,7 @@ export default function ProfilePage() {
   }
 
   const handleSaveProfile = async () => {
-    if (!user) return
+    if (!user || !canEditProfile) return
 
     setSaving(true)
     try {
@@ -119,14 +121,17 @@ export default function ProfilePage() {
   }
 
   const handleChangePassword = async () => {
-    if (!user || !newPassword) return
+    if (!user || !canEditProfile || !currentPassword || !newPassword) return
 
     setSavingPassword(true)
     try {
       const response = await fetch(`/api/users/${user.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword }),
+        body: JSON.stringify({
+          currentPassword,
+          password: newPassword,
+        }),
       })
 
       if (response.ok) {
@@ -174,16 +179,20 @@ export default function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Profile Settings</h1>
+        <h1 className="text-2xl font-bold">
+          {canEditProfile ? 'Profile Settings' : 'Observer Profile'}
+        </h1>
         <p className="text-muted-foreground">
-          Manage your account settings and view your activity
+          {canEditProfile
+            ? 'Manage your account settings and view your activity'
+            : 'This shared guest profile is read-only.'}
         </p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
+          {canEditProfile && <TabsTrigger value="security">Security</TabsTrigger>}
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -213,11 +222,13 @@ export default function ProfilePage() {
                       type="color"
                       value={color}
                       onChange={(e) => setColor(e.target.value)}
+                      disabled={!canEditProfile}
                       className="w-12 h-10 p-1 cursor-pointer"
                     />
                     <Input
                       value={color}
                       onChange={(e) => setColor(e.target.value)}
+                      disabled={!canEditProfile}
                       className="w-28"
                     />
                   </div>
@@ -231,6 +242,7 @@ export default function ProfilePage() {
                     id="firstName"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    disabled={!canEditProfile}
                   />
                 </div>
                 <div className="space-y-2">
@@ -239,6 +251,7 @@ export default function ProfilePage() {
                     id="lastName"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    disabled={!canEditProfile}
                   />
                 </div>
               </div>
@@ -264,27 +277,31 @@ export default function ProfilePage() {
                   value={contactInfo}
                   onChange={(e) => setContactInfo(e.target.value)}
                   placeholder="Phone, Slack, etc."
+                  disabled={!canEditProfile}
                 />
               </div>
 
-              <Button onClick={handleSaveProfile} disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
+              {canEditProfile && (
+                <Button onClick={handleSaveProfile} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="security">
+        {canEditProfile && (
+          <TabsContent value="security">
           <Card>
             <CardHeader>
               <CardTitle>Change Password</CardTitle>
@@ -293,6 +310,17 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  autoComplete="current-password"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
                 <div className="relative">
@@ -321,7 +349,7 @@ export default function ProfilePage() {
 
               <Button
                 onClick={handleChangePassword}
-                disabled={savingPassword || !newPassword}
+                disabled={savingPassword || !currentPassword || !newPassword}
               >
                 {savingPassword ? (
                   <>
@@ -334,7 +362,8 @@ export default function ProfilePage() {
               </Button>
             </CardContent>
           </Card>
-        </TabsContent>
+          </TabsContent>
+        )}
 
         <TabsContent value="activity">
           <div className="space-y-6">

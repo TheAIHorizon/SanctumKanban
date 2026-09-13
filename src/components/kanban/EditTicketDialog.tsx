@@ -1,4 +1,5 @@
 'use client'
+import { assigneeFromSelection } from '@/lib/ticket-form-options'
 
 import { useState, useEffect } from 'react'
 import {
@@ -103,6 +104,21 @@ export function EditTicketDialog({
   const [loadingComments, setLoadingComments] = useState(false)
   const [submittingComment, setSubmittingComment] = useState(false)
 
+  // The trigger controls `open` directly, so reset from the latest ticket here
+  // rather than relying on Radix calling handleOpenChange(true).
+  useEffect(() => {
+    if (open) {
+      setTitle(ticket.title)
+      setDescription(ticket.description || '')
+      setAssigneeId(ticket.assignee?.id || 'unassigned')
+      setStatus(ticket.status)
+      setDueDate(ticket.dueDate ? new Date(ticket.dueDate).toISOString().split('T')[0] : '')
+      setSelectedTagIds(ticket.tags?.map(t => t.tag.id) || [])
+      setError('')
+      setNewComment('')
+    }
+  }, [open, ticket])
+
   // Fetch comments when dialog opens
   useEffect(() => {
     if (open) {
@@ -175,7 +191,7 @@ export function EditTicketDialog({
         body: JSON.stringify({
           title,
           description: description || null,
-          assigneeId: assigneeId === 'unassigned' ? null : assigneeId,
+          assigneeId: assigneeFromSelection(assigneeId),
           status,
           dueDate: dueDate || null,
           tagIds: selectedTagIds,
@@ -205,18 +221,7 @@ export function EditTicketDialog({
     )
   }
 
-  // Reset form when dialog opens with new ticket
   const handleOpenChange = (open: boolean) => {
-    if (open) {
-      setTitle(ticket.title)
-      setDescription(ticket.description || '')
-      setAssigneeId(ticket.assignee?.id || 'unassigned')
-      setStatus(ticket.status)
-      setDueDate(ticket.dueDate ? new Date(ticket.dueDate).toISOString().split('T')[0] : '')
-      setSelectedTagIds(ticket.tags?.map(t => t.tag.id) || [])
-      setError('')
-      setNewComment('')
-    }
     onOpenChange(open)
   }
 

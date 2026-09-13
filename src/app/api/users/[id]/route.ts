@@ -3,6 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import {
+  authorizeUserFieldUpdate,
+  authorizeUserTargetUpdate,
+} from '@/lib/user-profile-security'
 
 // GET - Get a single user
 export async function GET(
@@ -69,26 +73,43 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const isAdmin = session.user.role === 'ADMIN'
-    const isSelf = session.user.id === params.id
-
-    // Users can only update their own profile, admins can update any
-    if (!isAdmin && !isSelf) {
+    const targetAuthorization = authorizeUserTargetUpdate(session.user, params.id)
+    if (!targetAuthorization.allowed) {
       return NextResponse.json(
-        { error: 'You can only update your own profile' },
-        { status: 403 }
+        { error: targetAuthorization.error },
+        { status: targetAuthorization.status }
       )
     }
 
     const body = await request.json()
-    const { firstName, lastName, contactInfo, color, role, password, email } = body
+    const { firstName, lastName, contactInfo, color, role, password, email, currentPassword } = body
+    const fieldAuthorization = authorizeUserFieldUpdate(session.user, body)
 
-    // Only admins can change roles
-    if (role !== undefined && !isAdmin) {
+    if (!fieldAuthorization.allowed) {
       return NextResponse.json(
-        { error: 'Only admins can change user roles' },
-        { status: 403 }
+        { error: fieldAuthorization.error },
+        { status: fieldAuthorization.status }
       )
+    }
+
+    const isAdmin = session.user.role === 'ADMIN'
+
+    if (password !== undefined && (typeof password !== 'string' || !password)) {
+      return NextResponse.json({ error: 'Password must not be empty' }, { status: 400 })
+    }
+
+    if (fieldAuthorization.verifyCurrentPassword) {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: params.id },
+        select: { passwordHash: true },
+      })
+      if (!currentUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      const validCurrentPassword = await bcrypt.compare(currentPassword, currentUser.passwordHash)
+      if (!validCurrentPassword) {
+        return NextResponse.json({ error: 'Current password is incorrect' }, { status: 403 })
+      }
     }
 
     // Check if email is being changed and already exists
@@ -116,7 +137,7 @@ export async function PATCH(
     if (color !== undefined) updateData.color = color
     if (email !== undefined) updateData.email = email
     if (role !== undefined && isAdmin) updateData.role = role
-    if (password) updateData.passwordHash = await bcrypt.hash(password, 12)
+    if (password !== undefined) updateData.passwordHash = await bcrypt.hash(password, 12)
 
     const user = await prisma.user.update({
       where: { id: params.id },

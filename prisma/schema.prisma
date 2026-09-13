@@ -79,6 +79,7 @@ model ClassWorkspace {
   members   ClassWorkspaceMember[]
   teams     Team[]
   cohorts   Cohort[]
+  resources ClassResource[]
 
   @@index([archivedAt])
   @@index([createdById])
@@ -112,6 +113,7 @@ model Team {
   tickets        Ticket[]
   reflections    Reflection[]
   tags           Tag[]
+  note           TeamNote?
 
   @@index([classWorkspaceId])
 }
@@ -129,6 +131,32 @@ model TeamMember {
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@unique([userId, teamId])
+}
+
+// Admin-configured links shown at the top of a class dashboard.
+model ClassResource {
+  id               String   @id @default(cuid())
+  classWorkspaceId String
+  key              String
+  url              String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  classWorkspace ClassWorkspace @relation(fields: [classWorkspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([classWorkspaceId, key])
+}
+
+// One collaboratively edited note per team. Revision provides optimistic locking.
+model TeamNote {
+  id        String   @id @default(cuid())
+  teamId    String   @unique
+  content   String   @default("") @db.Text
+  revision  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 // Ticket model

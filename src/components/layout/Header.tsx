@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag, Target, Wand2, School } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
+import { canAccessProfileSettings } from '@/lib/user-profile-security'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export function Header() {
@@ -124,13 +125,17 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                {canAccessProfileSettings(user.role) && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={() => signOut({ callbackUrl: '/login' })}

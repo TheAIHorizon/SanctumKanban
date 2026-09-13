@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "tsx --test tests/*.test.ts",
+    "check:system": "node scripts/system-check.mjs",
+    "test:integration": "tsx scripts/ga-integration-check.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

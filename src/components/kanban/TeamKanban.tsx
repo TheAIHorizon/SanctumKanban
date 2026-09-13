@@ -1,10 +1,12 @@
 'use client'
+import { canFilterMyTickets } from '@/lib/ticket-form-options'
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { KanbanBoard } from './KanbanBoard'
 import { ReflectionBoard } from '@/components/reflection/ReflectionBoard'
+import { TeamNotes } from '@/components/notes/TeamNotes'
 import { CreateTicketDialog } from './CreateTicketDialog'
 import { FilterBar, FilterState, defaultFilters } from './FilterBar'
 import { Users, Plus, ChevronDown, ChevronUp, LayoutGrid, MessageSquare, Minimize2, Maximize2, Keyboard } from 'lucide-react'
@@ -12,6 +14,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { KeyboardShortcutsHelp } from '@/components/keyboard/KeyboardShortcutsHelp'
+import { applyTicketPositions } from '@/lib/team-ticket-state'
 
 interface User {
   id: string
@@ -46,6 +49,7 @@ interface Ticket {
   position: number
   dueDate?: string | null
   assignee: User | null
+  createdById?: string | null
   teamId: string
   tags?: TicketTag[]
   _count?: { comments: number }
@@ -87,6 +91,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
   const [showMembers, setShowMembers] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [tickets, setTickets] = useState(team.tickets)
+  useEffect(() => { setTickets(team.tickets) }, [team.tickets])
   const [compactView, setCompactView] = useState(true) // Default to compact
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false)
@@ -94,6 +99,10 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
 
   const canCreateTickets =
     currentUser.role === 'ADMIN' || isTeamLead || (isMember ?? false)
+  const canUseMyTickets = canFilterMyTickets(team.members, currentUser.id)
+  useEffect(() => {
+    if (!canUseMyTickets) setFilters(prev => ({ ...prev, myTicketsOnly: false }))
+  }, [canUseMyTickets])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -137,6 +146,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
           searchInput?.focus()
           break
         case 'm':
+          if (!canUseMyTickets) break
           e.preventDefault()
           setFilters((prev) => ({ ...prev, myTicketsOnly: !prev.myTicketsOnly }))
           break
@@ -149,7 +159,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [canCreateTickets, filters.search])
+  }, [canCreateTickets, canUseMyTickets, filters.search])
 
   // Filter tickets based on current filters
   const filteredTickets = useMemo(() => {
@@ -297,6 +307,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
               <MessageSquare className="h-4 w-4" />
               Reflection
             </TabsTrigger>
+            <TabsTrigger value="notes">Team Notes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="kanban" className="mt-0">
@@ -318,6 +329,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
               hideColumns={filters.hideColumns}
               onTicketUpdated={handleTicketUpdated}
               onTicketDeleted={handleTicketDeleted}
+              onTicketsReordered={(positions) => setTickets((current) => applyTicketPositions(current, positions))}
             />
           </TabsContent>
 
@@ -327,6 +339,9 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
               reflection={team.reflections[0] || null}
               isTeamLead={isTeamLead}
             />
+          </TabsContent>
+          <TabsContent value="notes" className="mt-0">
+            <TeamNotes teamId={team.id} canEdit={canCreateTickets && currentUser.role !== 'OBSERVER'} />
           </TabsContent>
         </Tabs>
       </CardContent>

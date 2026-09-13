@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { TeamKanban } from '@/components/kanban/TeamKanban'
 import { HeatMapView } from './HeatMapView'
 import { Button } from '@/components/ui/button'
-import { LayoutGrid, Map, ChevronLeft } from 'lucide-react'
+import { LayoutGrid, Map, ChevronLeft, Users } from 'lucide-react'
+import { teamsForView } from '@/lib/team-views'
 
 interface User {
   id: string
@@ -61,11 +62,13 @@ interface TeamGridProps {
   readOnly?: boolean
 }
 
-type ViewMode = 'detailed' | 'overview' | 'focused'
+type ViewMode = 'detailed' | 'overview' | 'focused' | 'mine'
 
 export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('detailed')
   const [focusedTeamId, setFocusedTeamId] = useState<string | null>(null)
+  const orderedTeams = teamsForView(teams, currentUser.id, false)
+  const displayedTeams = teamsForView(teams, currentUser.id, viewMode === 'mine')
 
   if (teams.length === 0) {
     return (
@@ -99,7 +102,7 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
   return (
     <div className="space-y-4">
       {/* View Mode Toggle */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {viewMode === 'focused' && (
             <Button
@@ -114,7 +117,7 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
           )}
           {viewMode !== 'focused' && (
             <h2 className="text-lg font-semibold">
-              {teams.length} Team{teams.length !== 1 ? 's' : ''}
+              {displayedTeams.length} Team{displayedTeams.length !== 1 ? 's' : ''}
             </h2>
           )}
           {viewMode === 'focused' && focusedTeam && (
@@ -141,18 +144,32 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
               <Map className="h-4 w-4 mr-1" />
               Overview
             </Button>
+            {currentUser.role !== 'OBSERVER' && (
+              <Button
+                variant={viewMode === 'mine' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('mine')}
+                className="h-8"
+              >
+                <Users className="h-4 w-4 mr-1" />
+                My Teams
+              </Button>
+            )}
           </div>
         )}
       </div>
 
       {/* Content based on view mode */}
       {viewMode === 'overview' && (
-        <HeatMapView teams={teams} onTeamClick={handleTeamClick} />
+        <HeatMapView teams={orderedTeams} onTeamClick={handleTeamClick} />
       )}
 
-      {viewMode === 'detailed' && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {teams.map((team) => {
+      {viewMode === 'mine' && displayedTeams.length === 0 && (
+        <p className="py-8 text-muted-foreground">You are not a member of a team in this class. Use Detailed or Overview to browse its boards.</p>
+      )}
+      {(viewMode === 'detailed' || viewMode === 'mine') && (
+        <div className={viewMode === 'mine' ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 xl:grid-cols-2 gap-6'}>
+          {displayedTeams.map((team) => {
             const userMembership = team.members.find(
               (m) => m.userId === currentUser.id
             )
@@ -174,7 +191,7 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
       )}
 
       {viewMode === 'focused' && focusedTeam && (
-        <div className="max-w-4xl">
+        <div className="w-full">
           {(() => {
             const userMembership = focusedTeam.members.find(
               (m) => m.userId === currentUser.id

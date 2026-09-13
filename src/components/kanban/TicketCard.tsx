@@ -1,18 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useDraggable } from '@dnd-kit/core'
+import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { EditTicketDialog } from './EditTicketDialog'
+import { WorkflowBadges } from './WorkflowBadges'
 import { cn } from '@/lib/utils'
-import { MoreHorizontal, Pencil, Trash2, GripVertical, ChevronDown, ChevronUp, Calendar, MessageCircle } from 'lucide-react'
+import { can, type Role } from '@/lib/permissions'
+import { Pencil, Trash2, GripVertical, ChevronDown, ChevronUp, Calendar, MessageCircle } from 'lucide-react'
 
 interface User {
   id: string
@@ -46,6 +42,7 @@ interface Ticket {
   position: number
   dueDate?: string | null
   assignee: User | null
+  createdById?: string | null
   teamId: string
   tags?: TicketTag[]
   _count?: { comments: number }
@@ -123,14 +120,24 @@ export function TicketCard({
   const commentCount = ticket._count?.comments || 0
   const ticketTags = ticket.tags?.map(t => t.tag) || []
 
-  const canEdit =
-    currentUser.role === 'ADMIN' ||
-    isTeamLead ||
-    ticket.assignee?.id === currentUser.id
+  const principal = { id: currentUser.id, role: currentUser.role as Role }
+  const permissionContext = {
+    isMember: members.some((member) => member.userId === currentUser.id),
+    isLead: isTeamLead,
+    assigneeId: ticket.assignee?.id,
+    createdById: ticket.createdById,
+  }
+  const canEdit = can(principal, 'ticket:update', permissionContext)
+  const canDelete = can(principal, 'ticket:archive', permissionContext)
 
-  const canDelete = currentUser.role === 'ADMIN' || isTeamLead
-
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({
     id: ticket.id,
     disabled: !canEdit,
   })
@@ -142,12 +149,13 @@ export function TicketCard({
 
   const cardStyle = {
     ...(transform ? { transform: CSS.Translate.toString(transform) } : {}),
+    transition,
     backgroundColor: cardColor,
     color: textColor,
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this ticket?')) return
+    if (!window.confirm('Archive this ticket? It will be hidden from the board, not permanently deleted.')) return
 
     setIsDeleting(true)
     try {
@@ -189,7 +197,7 @@ export function TicketCard({
           'hover:shadow-md',
           !showExpanded && 'hover:scale-[1.01]',
           showExpanded && 'hover:scale-[1.02]',
-          isDragging && 'opacity-50 rotate-3 shadow-lg',
+          (isDragging || isSortableDragging) && 'opacity-50 rotate-3 shadow-lg',
           !canEdit && 'cursor-default',
           showExpanded ? 'p-3' : 'px-3 py-2'
         )}
@@ -200,6 +208,7 @@ export function TicketCard({
               {...attributes}
               {...listeners}
               data-drag-handle
+              aria-label={`Reorder ${ticket.title}`}
               className={cn(
                 "cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-70 transition-opacity",
                 showExpanded ? "mt-0.5" : "mt-0",
@@ -212,13 +221,14 @@ export function TicketCard({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 relative group/ticket-text">
                 <h4 className={cn(
                   "font-semibold leading-tight",
                   showExpanded ? "text-sm" : "text-xs truncate"
-                )}>
+                )} tabIndex={0}>
                   {ticket.title}
                 </h4>
+                {!showExpanded && <WorkflowBadges names={ticketTags.map(tag => tag.name)} />}
                 {!showExpanded && (
                   <div className="flex items-center gap-2">
                     {ticket.assignee && (
@@ -246,6 +256,15 @@ export function TicketCard({
                     )}
                   </div>
                 )}
+                <div
+                  role="tooltip"
+                  tabIndex={0}
+                  onClick={(event) => event.stopPropagation()}
+                  className="absolute left-0 right-0 top-full z-50 mt-1 hidden max-h-40 min-w-[14rem] overflow-y-auto whitespace-pre-wrap break-words rounded-md border bg-popover p-3 text-xs text-popover-foreground shadow-lg group-hover/ticket-text:block group-focus-within/ticket-text:block"
+                >
+                  <p className="font-semibold">{ticket.title}</p>
+                  {ticket.description && <p className="mt-2">{ticket.description}</p>}
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 {compactView && (ticket.description || ticket.assignee) && (
@@ -258,6 +277,7 @@ export function TicketCard({
                       "h-5 w-5 flex items-center justify-center rounded opacity-60 hover:opacity-100 transition-opacity",
                       isLightText ? "hover:bg-white/20" : "hover:bg-black/10"
                     )}
+                    aria-label={isExpanded ? `Collapse ${ticket.title}` : `Expand ${ticket.title}`}
                   >
                     {isExpanded ? (
                       <ChevronUp className="h-3 w-3" />
@@ -266,39 +286,36 @@ export function TicketCard({
                     )}
                   </button>
                 )}
-                {(canEdit || canDelete) && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity",
-                          isLightText ? "hover:bg-white/20 text-white" : "hover:bg-black/10 text-black"
-                        )}
-                      >
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canEdit && (
-                        <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
-                      {canDelete && (
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={handleDelete}
-                          disabled={isDeleting}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                {canEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-6 w-6 opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity",
+                      isLightText ? "hover:bg-white/20 text-white" : "hover:bg-black/10 text-black"
+                    )}
+                    onClick={() => setEditDialogOpen(true)}
+                    aria-label={`Edit ${ticket.title}`}
+                    title="Edit ticket"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-6 w-6 opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity",
+                      isLightText ? "hover:bg-white/20 text-white" : "hover:bg-black/10 text-black"
+                    )}
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    aria-label={`Archive ${ticket.title}`}
+                    title="Archive ticket"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 )}
               </div>
             </div>

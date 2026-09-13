@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { can, type Role } from '@/lib/permissions'
 
 export interface TicketPermission {
   ok: boolean
@@ -15,7 +16,7 @@ export interface TicketPermission {
 export async function checkTicketPermission(
   ticketId: string,
   userId: string,
-  userRole: string
+  userRole: Role
 ): Promise<TicketPermission> {
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
@@ -36,12 +37,18 @@ export async function checkTicketPermission(
     return { ok: false, status: 409, error: 'Archived class boards are read-only' }
   }
 
-  const isAdmin = userRole === 'ADMIN'
   const membership = ticket.team.members.find((m) => m.userId === userId)
-  const isTeamLead = membership?.role === 'LEAD'
-  const isAssignee = ticket.assigneeId === userId
+  const allowed = can(
+    { id: userId, role: userRole },
+    'dcwf:link',
+    {
+      isMember: Boolean(membership),
+      isLead: membership?.role === 'LEAD',
+      assigneeId: ticket.assigneeId,
+    }
+  )
 
-  if (!isAdmin && !isTeamLead && !isAssignee) {
+  if (!allowed) {
     return { ok: false, status: 403, error: 'You do not have permission to modify this ticket' }
   }
 
