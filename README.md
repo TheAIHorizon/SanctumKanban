@@ -21,6 +21,7 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 
 - [User manual (offline HTML)](docs/user-manual.html)
 - [Gantt guide and safe future NAS rollout](docs/gantt-guide.html)
+- [Automatic completion tracking and planned/actual comparison](docs/completion-tracking.html)
 - [GA system check and acceptance checklist (offline HTML)](docs/ga-system-check.html)
 - [Code-review findings and remaining work (offline HTML)](docs/code-review.html)
 - Run `npm run check:system` for tests, lint, and a production build. Stop the local app first: development and production builds share `.next`.

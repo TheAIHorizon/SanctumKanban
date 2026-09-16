@@ -3,8 +3,18 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { can } from '@/lib/permissions'
-import { isTeamClassWritable } from '@/lib/class-workspaces.server'
 import { validateTicketSchedule } from '@/lib/ticket-schedule'
+import {
+  completionForNewTicket,
+  isTicketStatus,
+} from '@/lib/ticket-completion'
+import { isTransactionConflict } from '@/lib/transaction-conflicts'
+
+class TicketCreateError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+  }
+}
 
 // POST - Create a new ticket
 export async function POST(request: NextRequest) {
@@ -16,6 +26,18 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { title, description, teamId, assigneeId, status, tagIds } = body
+
+    if (Object.hasOwn(body, 'completedAt')) {
+      return NextResponse.json(
+        { error: 'completedAt is read-only' },
+        { status: 400 }
+      )
+    }
+
+    if (status !== undefined && !isTicketStatus(status)) {
+      return NextResponse.json({ error: 'Invalid ticket status' }, { status: 400 })
+    }
+    const ticketStatus = status ?? 'BACKLOG'
 
     if (!title || !teamId) {
       return NextResponse.json(
@@ -32,99 +54,147 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: schedule.error }, { status: 400 })
     }
 
-    if (!(await isTeamClassWritable(teamId))) {
-      return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
-    }
+    const ticket = await prisma.$transaction(async (tx) => {
+      // The team lock serializes creation within a board, including an empty column.
+      const teams = await tx.$queryRaw<{ id: string; classWorkspaceId: string | null }[]>`
+        SELECT "id", "classWorkspaceId"
+        FROM "Team"
+        WHERE "id" = ${teamId}
+        FOR UPDATE
+      `
+      const team = teams[0]
+      if (!team) {
+        throw new TicketCreateError(
+          'You do not have permission to create tickets for this team',
+          403
+        )
+      }
 
-    // Check if user has permission to create tickets for this team
-    const membership = await prisma.teamMember.findUnique({
-      where: {
-        userId_teamId: {
-          userId: session.user.id,
-          teamId,
-        },
-      },
-    })
+      if (team.classWorkspaceId) {
+        const workspaces = await tx.$queryRaw<{ archivedAt: Date | null }[]>`
+          SELECT "archivedAt"
+          FROM "ClassWorkspace"
+          WHERE "id" = ${team.classWorkspaceId}
+          FOR UPDATE
+        `
+        if (!workspaces[0]) {
+          throw new TicketCreateError(
+            'You do not have permission to create tickets for this team',
+            403
+          )
+        }
+        if (workspaces[0].archivedAt) {
+          throw new TicketCreateError('Archived class boards are read-only', 409)
+        }
+      }
 
-    if (
-      !can(
+      await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "TeamMember"
+        WHERE "teamId" = ${teamId} AND "userId" = ${session.user.id}
+        FOR UPDATE
+      `
+      const membership = await tx.teamMember.findUnique({
+        where: { userId_teamId: { userId: session.user.id, teamId } },
+        select: { role: true },
+      })
+      if (!can(
         { id: session.user.id, role: session.user.role as any },
         'ticket:create',
         { isMember: !!membership, isLead: membership?.role === 'LEAD' }
-      )
-    ) {
-      return NextResponse.json(
-        { error: 'You do not have permission to create tickets for this team' },
-        { status: 403 }
-      )
-    }
-
-    // If an assignee is specified, they must belong to the same team.
-    if (assigneeId) {
-      const assigneeMembership = await prisma.teamMember.findUnique({
-        where: { userId_teamId: { userId: assigneeId, teamId } },
-      })
-      if (!assigneeMembership) {
-        return NextResponse.json(
-          { error: 'Assignee must be a member of this team' },
-          { status: 400 }
+      )) {
+        throw new TicketCreateError(
+          'You do not have permission to create tickets for this team',
+          403
         )
       }
-    }
 
-    // Get the highest position in the column
-    const highestPosition = await prisma.ticket.findFirst({
-      where: { teamId, status: status || 'BACKLOG' },
-      orderBy: { position: 'desc' },
-      select: { position: true },
-    })
+      // If an assignee is specified, lock and re-read their membership too.
+      if (assigneeId) {
+        await tx.$queryRaw<{ id: string }[]>`
+          SELECT "id"
+          FROM "TeamMember"
+          WHERE "teamId" = ${teamId} AND "userId" = ${assigneeId}
+          FOR UPDATE
+        `
+        const assigneeMembership = await tx.teamMember.findUnique({
+          where: { userId_teamId: { userId: assigneeId, teamId } },
+          select: { role: true },
+        })
+        if (!assigneeMembership) {
+          throw new TicketCreateError('Assignee must be a member of this team', 400)
+        }
+      }
 
-    const ticket = await prisma.ticket.create({
-      data: {
-        title,
-        description,
-        teamId,
-        assigneeId: assigneeId || null,
-        status: status || 'BACKLOG',
-        position: (highestPosition?.position || 0) + 1,
-        createdById: session.user.id,
-        startDate: schedule.updates.startDate,
-        dueDate: schedule.updates.dueDate,
-        ...(tagIds && tagIds.length > 0 && {
+      const highestPosition = await tx.ticket.findFirst({
+        where: { teamId, status: ticketStatus },
+        orderBy: { position: 'desc' },
+        select: { position: true },
+      })
+
+      const completedAt = completionForNewTicket(ticketStatus, new Date())
+      // Transaction-scoped equivalent of prisma.ticket.create keeps history atomic.
+      const created = await tx.ticket.create({
+        data: {
+          title,
+          description,
+          teamId,
+          assigneeId: assigneeId || null,
+          status: ticketStatus,
+          position: (highestPosition?.position || 0) + 1,
+          createdById: session.user.id,
+          startDate: schedule.updates.startDate,
+          dueDate: schedule.updates.dueDate,
+          completedAt,
+          ...(tagIds && tagIds.length > 0 && {
+            tags: {
+              create: tagIds.map((tagId: string) => ({ tagId })),
+            },
+          }),
+        },
+        include: {
+          assignee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              color: true,
+            },
+          },
           tags: {
-            create: tagIds.map((tagId: string) => ({ tagId })),
-          },
-        }),
-      },
-      include: {
-        assignee: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            color: true,
+            include: {
+              tag: true,
+            },
           },
         },
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
-    })
+      })
 
-    // Create ticket history entry
-    await prisma.ticketHistory.create({
-      data: {
-        ticketId: ticket.id,
-        userId: session.user.id,
-        action: 'created',
-        toStatus: ticket.status,
-      },
+      await tx.ticketHistory.create({
+        data: {
+          ticketId: created.id,
+          userId: session.user.id,
+          action: 'created',
+          toStatus: created.status,
+          ...(completedAt && {
+            details: JSON.stringify({ completedAt: completedAt.toISOString() }),
+          }),
+        },
+      })
+
+      return created
     })
 
     return NextResponse.json(ticket)
   } catch (error) {
+    if (error instanceof TicketCreateError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+    if (isTransactionConflict(error)) {
+      return NextResponse.json(
+        { error: 'Ticket changed concurrently; reload and try again' },
+        { status: 409 }
+      )
+    }
     console.error('Failed to create ticket:', error)
     return NextResponse.json(
       { error: 'Failed to create ticket' },

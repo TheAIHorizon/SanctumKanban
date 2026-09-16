@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { TeamKanban } from '@/components/kanban/TeamKanban'
 import { HeatMapView } from './HeatMapView'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,7 @@ interface Ticket {
   position: number
   startDate?: Date | string | null
   dueDate?: Date | string | null
+  completedAt?: Date | string | null
   createdById?: string
   tags?: { tag: { id: string; name: string; color: string } }[]
   assignee: User | null
@@ -71,6 +73,7 @@ interface TeamGridProps {
 type ViewMode = 'detailed' | 'overview' | 'focused' | 'mine' | 'gantt'
 
 export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps) {
+  const router = useRouter()
   const [viewMode, setViewMode] = useState<ViewMode>('detailed')
   const [focusedTeamId, setFocusedTeamId] = useState<string | null>(null)
   const orderedTeams = teamsForView(teams, currentUser.id, false)
@@ -164,7 +167,7 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
             <Button
               variant={viewMode === 'gantt' ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setViewMode('gantt')}
+              onClick={() => { setViewMode('gantt'); router.refresh() }}
               className="h-8"
             >
               Gantt

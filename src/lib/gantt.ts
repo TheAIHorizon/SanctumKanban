@@ -37,8 +37,10 @@ export interface GanttPermissionTeam {
 
 export interface GanttDatedTicket {
   id: string
+  status?: string
   startDate?: Date | string | null
   dueDate?: Date | string | null
+  completedAt?: Date | string | null
 }
 
 export type UnscheduledReason = 'Missing start date' | 'Missing due date' | 'Missing start and due dates'
@@ -164,10 +166,16 @@ export function layoutGanttBar(
   }
 }
 
-export function classifyGanttTickets<T extends GanttDatedTicket>(tickets: readonly T[], range: GanttDateRange) {
-  const scheduled: Array<{ ticket: T; layout: GanttBarLayout }> = []
+export function classifyGanttTickets<T extends GanttDatedTicket>(
+  tickets: readonly T[],
+  range: GanttDateRange,
+  today: GanttDateInput = new Date()
+) {
+  const scheduled: Array<{ ticket: T; layout: GanttBarLayout | null }> = []
   const unscheduled: Array<{ ticket: T; reason: UnscheduledReason }> = []
   const outOfWindow: T[] = []
+  const rangeStart = toCalendarDate(range.start)
+  const rangeEnd = toCalendarDate(range.end)
 
   for (const item of tickets) {
     if (!item.startDate || !item.dueDate) {
@@ -181,8 +189,23 @@ export function classifyGanttTickets<T extends GanttDatedTicket>(tickets: readon
     }
 
     const layout = layoutGanttBar(item.startDate, item.dueDate, range)
-    if (layout) scheduled.push({ ticket: item, layout })
-    else outOfWindow.push(item)
+    let visibilityStart = toCalendarDate(item.startDate)
+    let visibilityEnd = toCalendarDate(item.dueDate)
+
+    if (item.completedAt) {
+      const actual = toCalendarDate(item.completedAt)
+      if (actual < visibilityStart) visibilityStart = actual
+      if (actual > visibilityEnd) visibilityEnd = actual
+    } else if (item.status !== 'DONE' && toCalendarDate(item.dueDate) < toCalendarDate(today)) {
+      const todayDate = toCalendarDate(today)
+      if (todayDate > visibilityEnd) visibilityEnd = todayDate
+    }
+
+    if (visibilityEnd >= rangeStart && visibilityStart <= rangeEnd) {
+      scheduled.push({ ticket: item, layout })
+    } else {
+      outOfWindow.push(item)
+    }
   }
 
   return { scheduled, unscheduled, outOfWindow }

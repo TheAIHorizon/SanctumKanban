@@ -1,6 +1,7 @@
 'use client'
 import { assigneeFromSelection } from '@/lib/ticket-form-options'
 import { validateTicketSchedule } from '@/lib/ticket-schedule'
+import { TicketCompletionDetails } from './TicketCompletionDetails'
 
 import { useState, useEffect } from 'react'
 import {
@@ -67,6 +68,7 @@ interface Ticket {
   position: number
   startDate?: Date | string | null
   dueDate?: Date | string | null
+  completedAt?: Date | string | null
   assignee: User | null
   teamId: string
   tags?: TicketTag[]
@@ -327,6 +329,7 @@ export function EditTicketDialog({
                 </div>
               </div>
 
+              <TicketCompletionDetails status={ticket.status} completedAt={ticket.completedAt} />
               <div className="space-y-2">
                 <Label htmlFor="edit-assignee">Assignee</Label>
                 <Select value={assigneeId} onValueChange={setAssigneeId} disabled={loading}>

@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url'
 export const REQUIRED_SCHEMA = Object.freeze({
   User: ['id', 'email', 'firstName', 'lastName', 'contactInfo', 'color', 'role', 'passwordHash', 'createdAt', 'updatedAt'],
   Team: ['id', 'name', 'description', 'classWorkspaceId', 'createdAt', 'updatedAt'],
-  Ticket: ['id', 'title', 'description', 'status', 'position', 'startDate', 'dueDate', 'teamId', 'assigneeId', 'createdById', 'archived', 'archivedAt', 'archivedById', 'createdAt', 'updatedAt'],
+  Ticket: ['id', 'title', 'description', 'status', 'position', 'startDate', 'dueDate', 'completedAt', 'teamId', 'assigneeId', 'createdById', 'archived', 'archivedAt', 'archivedById', 'createdAt', 'updatedAt'],
   ClassWorkspace: ['id', 'name', 'code', 'term', 'description', 'archivedAt', 'createdById', 'createdAt', 'updatedAt'],
   ClassResource: ['id', 'classWorkspaceId', 'key', 'url', 'createdAt', 'updatedAt'],
   TeamNote: ['id', 'teamId', 'content', 'revision', 'createdAt', 'updatedAt'],

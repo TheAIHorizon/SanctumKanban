@@ -495,6 +495,52 @@ async function main(): Promise<void> {
       assert.equal(history?.toStatus, 'DOING')
     })
 
+    await check('completion timestamps follow real status transitions and cannot be forged', async () => {
+      const before = Date.now()
+      const initialRace = await Promise.all([0, 1].map(() => request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json: { status: 'DONE' } })))
+      for (const result of initialRace) assert.ok([200, 409].includes(result.status))
+      const done = initialRace.find(result => result.status === 200)!
+      assert.ok(done, 'At least one concurrent completion succeeds')
+      assert.ok(done.data.completedAt, 'DONE must automatically record completion')
+      const firstCompletion = done.data.completedAt
+      for (const result of initialRace.filter(result => result.status === 200)) assert.equal(result.data.completedAt, firstCompletion)
+      assert.equal(await prisma.ticketHistory.count({ where: { ticketId: firstTicketId, action: 'moved', toStatus: 'DONE' } }), 1)
+      assert.ok(new Date(firstCompletion).getTime() >= before)
+      assert.ok(new Date(firstCompletion).getTime() <= Date.now())
+      const repeated = await Promise.all([0, 1].map(() => request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json: { status: 'DONE' } })))
+      for (const result of repeated) assert.ok([200, 409].includes(result.status))
+      const edited = await request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json: { description: 'Completed ticket edit preserves timestamp' } })
+      expectStatus(edited, 200, 'edit completed ticket')
+      assert.equal(edited.data.completedAt, firstCompletion)
+      const forged = await request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json: { completedAt: '2000-01-01T00:00:00Z' } })
+      expectStatus(forged, 400, 'client cannot forge completion')
+      const reopened = await request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json: { status: 'DOING' } })
+      expectStatus(reopened, 200, 'reopen ticket')
+      assert.equal(reopened.data.completedAt, null)
+      const history = await prisma.ticketHistory.findMany({ where: { ticketId: firstTicketId, action: 'moved', fromStatus: 'DONE', toStatus: 'DOING' }, orderBy: { timestamp: 'desc' } })
+      assert.equal(JSON.parse(history[0].details || '{}').previousCompletedAt, firstCompletion)
+      const recompleted = await request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json: { status: 'DONE' } })
+      expectStatus(recompleted, 200, 'recomplete ticket')
+      assert.ok(new Date(recompleted.data.completedAt).getTime() >= new Date(firstCompletion).getTime())
+      const stored = await prisma.ticket.findUniqueOrThrow({ where: { id: firstTicketId } })
+      assert.equal(stored.completedAt?.toISOString(), recompleted.data.completedAt)
+    })
+
+    await check('direct DONE creation timestamps completion and legacy DONE edits do not invent dates', async () => {
+      const created = await request(memberJar, '/api/tickets', { method: 'POST', json: { title: `Direct completion ${suffix}`, teamId: memberTeam.id, status: 'DONE' } })
+      expectStatus(created, 200, 'direct DONE creation')
+      assert.ok(created.data.completedAt)
+      const legacy = await prisma.ticket.create({ data: { title: 'Legacy done fixture', status: 'DONE', teamId: memberTeam.id, createdById: member.id } })
+      const edit = await request(memberJar, `/api/tickets/${legacy.id}`, { method: 'PATCH', json: { status: 'DONE', description: 'Unknown historical completion stays unknown' } })
+      expectStatus(edit, 200, 'legacy DONE edit')
+      assert.equal(edit.data.completedAt, null)
+      const backlog = await request(memberJar, `/api/tickets/${legacy.id}`, { method: 'PATCH', json: { status: 'BACKLOG' } })
+      expectStatus(backlog, 200, 'reopen to backlog')
+      const direct = await request(memberJar, `/api/tickets/${legacy.id}`, { method: 'PATCH', json: { status: 'DONE' } })
+      expectStatus(direct, 200, 'backlog to DONE')
+      assert.ok(direct.data.completedAt)
+    })
+
     await check('student ticket reorder persists and reads back in order', async () => {
       const reordered = await request(memberJar, `/api/tickets/${secondTicketId}/reorder`, {
         method: 'PATCH',

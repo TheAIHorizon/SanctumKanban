@@ -8,4 +8,5 @@ test('dashboard offers Gantt from class-scoped teams and forwards archived read-
   assert.match(source, /<GanttView\s+teams=\{orderedTeams\}\s+currentUser=\{currentUser\}\s+readOnly=\{readOnly\}/)
   assert.match(source, /startDate\?:/)
   assert.match(source, /dueDate\?:/)
+  assert.match(source, /setViewMode\('gantt'\); router\.refresh\(\)/)
 })

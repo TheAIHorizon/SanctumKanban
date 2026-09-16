@@ -72,10 +72,14 @@ try {
     ['Next semester work', alpha, users[1], 120, 130, 'BACKLOG'],
     ['Completed lab', alpha, users[1], -4, -1, 'DONE'],
     ['Peer team plan', bravo, users[2], 0, 5, 'DOING'],
+    ['Finished late', alpha, users[1], -8, -3, 'DONE', 0],
+    ['Finished early', alpha, users[1], -5, 2, 'DONE', 0],
+    ['Finished on time', alpha, users[1], -3, 0, 'DONE', 0],
+    ['Prior period finish', alpha, users[1], -60, -45, 'DONE', 0],
   ]
   const tickets = []
-  for (const [title, team, owner, start, due, status] of fixtures) {
-    tickets.push(await prisma.ticket.create({ data: { title, description: 'Disposable local Gantt QA ticket.', teamId: team.id, createdById: owner.id, assigneeId: owner.id, startDate: start === null ? null : day(start), dueDate: due === null ? null : day(due), status, position: tickets.length } }))
+  for (const [title, team, owner, start, due, status, completed] of fixtures) {
+    tickets.push(await prisma.ticket.create({ data: { title, description: 'Disposable local Gantt QA ticket; any prefilled completion is synthetic test data.', teamId: team.id, createdById: owner.id, assigneeId: owner.id, startDate: start === null ? null : day(start), dueDate: due === null ? null : day(due), completedAt: completed === undefined ? null : day(completed), status, position: tickets.length } }))
   }
   const { page, context } = await openAs(users[1])
   const chart = page.getByRole('region', { name: 'Gantt chart', exact: true })
@@ -86,6 +90,12 @@ try {
   assert.equal(await chart.getByRole('button', { name: /Open Next semester work/ }).count(), 0)
   assert.ok(await chart.getByText(/outside this date range/).count())
   pass('class-scoped team rows, scheduled and unscheduled tickets, outside-window classification')
+  for (const label of ['3 days late', '2 days early', 'Completed on time', 'Completion date not recorded', 'Overdue—not completed']) {
+    assert.ok(await chart.getByText(label, { exact: true }).count(), `Missing completion label: ${label}`)
+  }
+  await chart.getByRole('button', { name: /Open Prior period finish/ }).first().waitFor()
+  assert.ok(await chart.getByTestId('gantt-early-remainder').count(), 'Early completion must visibly fade the remaining planned span')
+  pass('early, late, on-time, legacy and overdue indicators, including actual-only date window')
   await page.getByLabel('Team', { exact: true }).selectOption(bravo.id)
   assert.equal(await chart.getByRole('button', { name: /Open Network inventory/ }).count(), 0)
   await chart.getByRole('button', { name: /Open Peer team plan/ }).first().click()
@@ -108,6 +118,27 @@ try {
   assert.equal(key(stored.startDate), key(day(1)))
   assert.equal(key(stored.dueDate), key(day(4)))
   pass('member opens existing editor and planned dates persist after browser reload')
+  await page.getByRole('button', { name: 'Detailed', exact: true }).click()
+  await page.getByRole('button', { name: 'Edit Network inventory', exact: true }).click()
+  await page.getByRole('dialog').getByRole('combobox').first().click()
+  await page.getByRole('option', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
+  await page.getByRole('heading', { name: 'Edit Ticket' }).waitFor({ state: 'hidden' })
+  await page.getByRole('button', { name: 'Gantt', exact: true }).click()
+  await chart.getByRole('button', { name: /^Open Network inventory, Done,/ }).waitFor()
+  const finished = await prisma.ticket.findUniqueOrThrow({ where: { id: tickets[0].id } })
+  assert.ok(finished.completedAt)
+  assert.equal(key(finished.startDate), key(stored.startDate))
+  assert.equal(key(finished.dueDate), key(stored.dueDate))
+  await chart.getByRole('button', { name: /^Open Network inventory, Done,/ }).click()
+  await page.locator(`time[datetime="${finished.completedAt.toISOString()}"]`).waitFor()
+  await page.getByRole('dialog').getByRole('combobox').first().click()
+  await page.getByRole('option', { name: 'Doing', exact: true }).click()
+  await page.getByRole('button', { name: 'Save Changes', exact: true }).click()
+  await page.getByRole('heading', { name: 'Edit Ticket' }).waitFor({ state: 'hidden' })
+  const reopened = await prisma.ticket.findUniqueOrThrow({ where: { id: tickets[0].id } })
+  assert.equal(reopened.completedAt, null)
+  pass('Kanban completion automatically stamps date, Gantt refreshes, and reopening clears it without changing plans')
   await page.getByLabel('Calendar window').selectOption('week')
   await page.getByRole('button', { name: 'Next week', exact: true }).click()
   await page.getByRole('button', { name: 'Previous week', exact: true }).click()
