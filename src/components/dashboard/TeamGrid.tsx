@@ -6,6 +6,7 @@ import { HeatMapView } from './HeatMapView'
 import { Button } from '@/components/ui/button'
 import { LayoutGrid, Map, ChevronLeft, Users } from 'lucide-react'
 import { teamsForView } from '@/lib/team-views'
+import { GanttView } from './GanttView'
 
 interface User {
   id: string
@@ -28,6 +29,10 @@ interface Ticket {
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
+  startDate?: Date | string | null
+  dueDate?: Date | string | null
+  createdById?: string
+  tags?: { tag: { id: string; name: string; color: string } }[]
   assignee: User | null
   teamId: string
 }
@@ -47,6 +52,7 @@ interface Team {
   members: TeamMember[]
   tickets: Ticket[]
   reflections: Reflection[]
+  tags?: { id: string; name: string; color: string }[]
 }
 
 interface CurrentUser {
@@ -62,7 +68,7 @@ interface TeamGridProps {
   readOnly?: boolean
 }
 
-type ViewMode = 'detailed' | 'overview' | 'focused' | 'mine'
+type ViewMode = 'detailed' | 'overview' | 'focused' | 'mine' | 'gantt'
 
 export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('detailed')
@@ -125,7 +131,7 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
           )}
         </div>
         {viewMode !== 'focused' && (
-          <div className="flex items-center border rounded-lg p-1 bg-muted/50">
+          <div className="flex flex-wrap items-center border rounded-lg p-1 bg-muted/50">
             <Button
               variant={viewMode === 'detailed' ? 'secondary' : 'ghost'}
               size="sm"
@@ -155,11 +161,22 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
                 My Teams
               </Button>
             )}
+            <Button
+              variant={viewMode === 'gantt' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('gantt')}
+              className="h-8"
+            >
+              Gantt
+            </Button>
           </div>
         )}
       </div>
 
       {/* Content based on view mode */}
+      {viewMode === 'gantt' && (
+        <GanttView teams={orderedTeams} currentUser={currentUser} readOnly={readOnly} />
+      )}
       {viewMode === 'overview' && (
         <HeatMapView teams={orderedTeams} onTeamClick={handleTeamClick} />
       )}

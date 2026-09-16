@@ -1,5 +1,6 @@
 'use client'
 import { assigneeFromSelection } from '@/lib/ticket-form-options'
+import { validateTicketSchedule } from '@/lib/ticket-schedule'
 
 import { useState } from 'react'
 import {
@@ -93,7 +94,8 @@ interface Ticket {
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
-  dueDate?: string | null
+  startDate?: Date | string | null
+  dueDate?: Date | string | null
   assignee: User | null
   teamId: string
   tags?: { tag: Tag }[]
@@ -120,6 +122,7 @@ export function CreateTicketDialog({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [assigneeId, setAssigneeId] = useState<string>('')
+  const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -140,6 +143,12 @@ export function CreateTicketDialog({
     setLoading(true)
 
     try {
+      const schedule = validateTicketSchedule(
+        { startDate: startDate || null, dueDate: dueDate || null },
+        { startDate: null, dueDate: null },
+      )
+      if (!schedule.ok) throw new Error(schedule.error)
+
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,6 +158,7 @@ export function CreateTicketDialog({
           teamId,
           assigneeId: assigneeFromSelection(assigneeId),
           status: 'BACKLOG',
+          startDate: startDate || null,
           dueDate: dueDate || null,
           tagIds: selectedTagIds,
         }),
@@ -175,6 +185,7 @@ export function CreateTicketDialog({
     setTitle('')
     setDescription('')
     setAssigneeId('')
+    setStartDate('')
     setDueDate('')
     setSelectedTagIds([])
     setError('')
@@ -188,8 +199,13 @@ export function CreateTicketDialog({
     )
   }
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && !loading) resetForm()
+    onOpenChange(nextOpen)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Ticket</DialogTitle>
@@ -269,30 +285,40 @@ export function CreateTicketDialog({
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="assignee">Assignee</Label>
+            <Select value={assigneeId} onValueChange={setAssigneeId} disabled={loading}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select member" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {members.map((member) => (
+                  <SelectItem key={member.user.id} value={member.user.id}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: member.user.color }}
+                      />
+                      {member.user.firstName} {member.user.lastName}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="assignee">Assignee</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId} disabled={loading}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select member" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {members.map((member) => (
-                    <SelectItem key={member.user.id} value={member.user.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: member.user.color }}
-                        />
-                        {member.user.firstName} {member.user.lastName}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="start-date">Start Date</Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                disabled={loading}
+              />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="due-date">Due Date</Label>
               <Input
@@ -339,7 +365,7 @@ export function CreateTicketDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={loading}
             >
               Cancel

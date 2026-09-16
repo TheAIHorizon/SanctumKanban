@@ -394,10 +394,15 @@ async function main(): Promise<void> {
           teamId: memberTeam.id,
           assigneeId: member.id,
           status: 'BACKLOG',
+          startDate: '2026-09-10',
+          dueDate: '2026-09-12',
         },
       })
       expectStatus(second, 200, 'second student ticket create')
       secondTicketId = second.data.id
+      const scheduledCreate = await prisma.ticket.findUniqueOrThrow({ where: { id: secondTicketId } })
+      assert.equal(scheduledCreate.startDate?.toISOString().slice(0, 10), '2026-09-10')
+      assert.equal(scheduledCreate.dueDate?.toISOString().slice(0, 10), '2026-09-12')
 
       const third = await request(memberJar, '/api/tickets', {
         method: 'POST',
@@ -424,6 +429,50 @@ async function main(): Promise<void> {
         assert.equal(ticket.createdById, member.id)
         assert.equal(ticket.status, 'BACKLOG')
       }
+    })
+
+    await check('schedule rejects invalid or reversed dates without mutating the ticket', async () => {
+      for (const json of [
+        { startDate: '2026-09-20', dueDate: '2026-09-10' },
+        { startDate: '2026-02-30' },
+        { dueDate: 'not-a-date' },
+      ]) {
+        const bad = await request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json })
+        expectStatus(bad, 400, 'invalid schedule')
+      }
+      const unchanged = await request(memberJar, `/api/tickets/${firstTicketId}`)
+      expectStatus(unchanged, 200, 'unchanged schedule')
+      assert.equal(unchanged.data.startDate, null)
+      assert.equal(unchanged.data.dueDate, null)
+    })
+
+    await check('planned dates persist, validate partial edits, respect permissions, and can be cleared', async () => {
+      const scheduled = await request(memberJar, `/api/tickets/${firstTicketId}`, {
+        method: 'PATCH', json: { startDate: '2026-09-10', dueDate: '2026-09-10' },
+      })
+      expectStatus(scheduled, 200, 'same-day schedule')
+      const stored = await prisma.ticket.findUniqueOrThrow({ where: { id: firstTicketId } })
+      assert.equal(stored.startDate?.toISOString().slice(0, 10), '2026-09-10')
+      assert.equal(stored.dueDate?.toISOString().slice(0, 10), '2026-09-10')
+      const badPartial = await request(memberJar, `/api/tickets/${firstTicketId}`, {
+        method: 'PATCH', json: { startDate: '2026-09-11' },
+      })
+      expectStatus(badPartial, 400, 'partial schedule validates existing due date')
+      const denied = await request(observerJar, `/api/tickets/${firstTicketId}`, {
+        method: 'PATCH', json: { startDate: '2026-09-09' },
+      })
+      expectStatus(denied, 403, 'observer cannot schedule')
+      const untouched = await request(memberJar, `/api/tickets/${firstTicketId}`, {
+        method: 'PATCH', json: { description: 'Dates must survive unrelated edits' },
+      })
+      expectStatus(untouched, 200, 'unrelated edit')
+      assert.equal(untouched.data.startDate.slice(0, 10), '2026-09-10')
+      const cleared = await request(memberJar, `/api/tickets/${firstTicketId}`, {
+        method: 'PATCH', json: { startDate: null, dueDate: null },
+      })
+      expectStatus(cleared, 200, 'clear dates')
+      assert.equal(cleared.data.startDate, null)
+      assert.equal(cleared.data.dueDate, null)
     })
 
     await check('student ticket move persists', async () => {

@@ -47,7 +47,8 @@ interface Ticket {
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
-  dueDate?: string | null
+  startDate?: Date | string | null
+  dueDate?: Date | string | null
   assignee: User | null
   createdById?: string | null
   teamId: string

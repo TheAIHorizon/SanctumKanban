@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { can } from '@/lib/permissions'
 import { isTeamClassWritable } from '@/lib/class-workspaces.server'
+import { validateTicketSchedule } from '@/lib/ticket-schedule'
 
 // POST - Create a new ticket
 export async function POST(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, teamId, assigneeId, status, dueDate, tagIds } = body
+    const { title, description, teamId, assigneeId, status, tagIds } = body
 
     if (!title || !teamId) {
       return NextResponse.json(
@@ -22,6 +23,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const schedule = validateTicketSchedule(body, {
+      startDate: null,
+      dueDate: null,
+    })
+    if (!schedule.ok) {
+      return NextResponse.json({ error: schedule.error }, { status: 400 })
+    }
+
     if (!(await isTeamClassWritable(teamId))) {
       return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
@@ -78,7 +88,8 @@ export async function POST(request: NextRequest) {
         status: status || 'BACKLOG',
         position: (highestPosition?.position || 0) + 1,
         createdById: session.user.id,
-        dueDate: dueDate ? new Date(dueDate) : null,
+        startDate: schedule.updates.startDate,
+        dueDate: schedule.updates.dueDate,
         ...(tagIds && tagIds.length > 0 && {
           tags: {
             create: tagIds.map((tagId: string) => ({ tagId })),

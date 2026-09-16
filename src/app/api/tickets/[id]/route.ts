@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { can } from '@/lib/permissions'
 import { isTeamClassWritable } from '@/lib/class-workspaces.server'
+import { validateTicketSchedule } from '@/lib/ticket-schedule'
 
 // GET - Get a single ticket
 export async function GET(
@@ -138,13 +139,21 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, description, status, assigneeId, dueDate, tagIds } = body
+    const { title, description, status, assigneeId, tagIds } = body
 
     if (body.position !== undefined) {
       return NextResponse.json(
         { error: 'Use the reorder endpoint to change ticket positions' },
         { status: 400 }
       )
+    }
+
+    const schedule = validateTicketSchedule(body, {
+      startDate: ticket.startDate,
+      dueDate: ticket.dueDate,
+    })
+    if (!schedule.ok) {
+      return NextResponse.json({ error: schedule.error }, { status: 400 })
     }
 
     // Track status change for history
@@ -174,7 +183,7 @@ export async function PATCH(
         ...(description !== undefined && { description }),
         ...(status !== undefined && { status }),
         ...(assigneeId !== undefined && { assigneeId }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...schedule.updates,
       },
       include: {
         assignee: {

@@ -1,5 +1,6 @@
 'use client'
 import { assigneeFromSelection } from '@/lib/ticket-form-options'
+import { validateTicketSchedule } from '@/lib/ticket-schedule'
 
 import { useState, useEffect } from 'react'
 import {
@@ -64,7 +65,8 @@ interface Ticket {
   description: string | null
   status: 'BACKLOG' | 'DOING' | 'DONE'
   position: number
-  dueDate?: string | null
+  startDate?: Date | string | null
+  dueDate?: Date | string | null
   assignee: User | null
   teamId: string
   tags?: TicketTag[]
@@ -91,6 +93,7 @@ export function EditTicketDialog({
   const [description, setDescription] = useState(ticket.description || '')
   const [assigneeId, setAssigneeId] = useState(ticket.assignee?.id || 'unassigned')
   const [status, setStatus] = useState(ticket.status)
+  const [startDate, setStartDate] = useState(ticket.startDate ? new Date(ticket.startDate).toISOString().split('T')[0] : '')
   const [dueDate, setDueDate] = useState(ticket.dueDate ? new Date(ticket.dueDate).toISOString().split('T')[0] : '')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     ticket.tags?.map(t => t.tag.id) || []
@@ -112,6 +115,7 @@ export function EditTicketDialog({
       setDescription(ticket.description || '')
       setAssigneeId(ticket.assignee?.id || 'unassigned')
       setStatus(ticket.status)
+      setStartDate(ticket.startDate ? new Date(ticket.startDate).toISOString().split('T')[0] : '')
       setDueDate(ticket.dueDate ? new Date(ticket.dueDate).toISOString().split('T')[0] : '')
       setSelectedTagIds(ticket.tags?.map(t => t.tag.id) || [])
       setError('')
@@ -185,6 +189,12 @@ export function EditTicketDialog({
     setLoading(true)
 
     try {
+      const schedule = validateTicketSchedule(
+        { startDate: startDate || null, dueDate: dueDate || null },
+        { startDate: null, dueDate: null },
+      )
+      if (!schedule.ok) throw new Error(schedule.error)
+
       const response = await fetch(`/api/tickets/${ticket.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -193,6 +203,7 @@ export function EditTicketDialog({
           description: description || null,
           assigneeId: assigneeFromSelection(assigneeId),
           status,
+          startDate: startDate || null,
           dueDate: dueDate || null,
           tagIds: selectedTagIds,
         }),
@@ -291,6 +302,19 @@ export function EditTicketDialog({
                   </Select>
                 </div>
 
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-start-date">Start Date</Label>
+                  <Input
+                    id="edit-start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-due-date">Due Date</Label>
                   <Input

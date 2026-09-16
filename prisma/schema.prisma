@@ -166,6 +166,7 @@ model Ticket {
   description  String?
   status       TicketStatus @default(BACKLOG)
   position     Int          @default(0)
+  startDate    DateTime?    @db.Date
   dueDate      DateTime?
   teamId       String
   assigneeId   String?
