@@ -41,6 +41,8 @@ export interface GanttDatedTicket {
   startDate?: Date | string | null
   dueDate?: Date | string | null
   completedAt?: Date | string | null
+  startedAt?: Date | string | null
+  startDateAutoFilled?: boolean
 }
 
 export type UnscheduledReason = 'Missing start date' | 'Missing due date' | 'Missing start and due dates'
@@ -199,6 +201,12 @@ export function classifyGanttTickets<T extends GanttDatedTicket>(
     } else if (item.status !== 'DONE' && toCalendarDate(item.dueDate) < toCalendarDate(today)) {
       const todayDate = toCalendarDate(today)
       if (todayDate > visibilityEnd) visibilityEnd = todayDate
+    }
+
+    if (item.startedAt) {
+      const actualStart = toCalendarDate(item.startedAt)
+      if (actualStart < visibilityStart) visibilityStart = actualStart
+      if (actualStart > visibilityEnd) visibilityEnd = actualStart
     }
 
     if (visibilityEnd >= rangeStart && visibilityStart <= rangeEnd) {

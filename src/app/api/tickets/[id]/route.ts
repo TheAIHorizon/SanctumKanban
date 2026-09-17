@@ -11,6 +11,7 @@ import {
   type TicketStatusValue,
 } from '@/lib/ticket-completion'
 import { isTransactionConflict } from '@/lib/transaction-conflicts'
+import { planStartTransition } from '@/lib/ticket-start'
 
 class TicketUpdateError extends Error {
   constructor(message: string, readonly status: number) {
@@ -117,8 +118,15 @@ export async function PATCH(
   }
 
   const { title, description, status, assigneeId, tagIds } = body
-  if (Object.hasOwn(body, 'completedAt')) {
-    return NextResponse.json({ error: 'completedAt is read-only' }, { status: 400 })
+  if (
+    Object.hasOwn(body, 'completedAt') ||
+    Object.hasOwn(body, 'startedAt') ||
+    Object.hasOwn(body, 'startDateAutoFilled')
+  ) {
+    return NextResponse.json(
+      { error: 'completedAt, startedAt, and startDateAutoFilled are read-only' },
+      { status: 400 },
+    )
   }
   if (status !== undefined && !isTicketStatus(status)) {
     return NextResponse.json({ error: 'Invalid ticket status' }, { status: 400 })
@@ -198,17 +206,33 @@ export async function PATCH(
       const schedule = validateTicketSchedule(body, {
         startDate: ticket.startDate,
         dueDate: ticket.dueDate,
+        startDateAutoFilled: ticket.startDateAutoFilled,
       })
       if (!schedule.ok) throw new TicketUpdateError(schedule.error, 400)
 
       const requestedStatus = status as TicketStatusValue | undefined
       const statusChanged = requestedStatus !== undefined && requestedStatus !== ticket.status
+      const now = new Date()
       const completionPlan = planCompletionTransition(
         ticket.status,
         ticket.completedAt,
         requestedStatus,
-        new Date(),
+        now,
       )
+      const startPlan = planStartTransition({
+        currentStatus: ticket.status,
+        currentStartedAt: ticket.startedAt,
+        currentStartDate: ticket.startDate,
+        currentStartDateAutoFilled: ticket.startDateAutoFilled,
+        requestedStatus,
+        nextStartDate: schedule.schedule.startDate,
+        startDateWasProvided: Object.hasOwn(body, 'startDate'),
+        now,
+      })
+      const historyDetails = {
+        ...completionPlan.historyDetails,
+        ...startPlan.historyDetails,
+      }
 
       // Atomic equivalents of prisma.ticketTag.deleteMany and prisma.ticket.update follow.
       // Tags participate in the same transaction, so later failures cannot lose them.
@@ -229,6 +253,11 @@ export async function PATCH(
           ...(requestedStatus !== undefined && { status: requestedStatus }),
           ...(assigneeId !== undefined && { assigneeId }),
           ...schedule.updates,
+          ...(startPlan.shouldWriteSchedule && {
+            startDate: startPlan.startDate,
+            startDateAutoFilled: startPlan.startDateAutoFilled,
+          }),
+          ...(startPlan.shouldWriteStartedAt && { startedAt: startPlan.startedAt }),
           ...(completionPlan.shouldWrite && { completedAt: completionPlan.completedAt }),
         },
         include: {
@@ -247,9 +276,11 @@ export async function PATCH(
             action: 'moved',
             fromStatus: ticket.status,
             toStatus: requestedStatus,
-            ...(completionPlan.historyDetails && {
-              details: JSON.stringify(completionPlan.historyDetails),
-            }),
+            ...(startPlan.historyDetails
+              ? { details: JSON.stringify(historyDetails) }
+              : completionPlan.historyDetails
+                ? { details: JSON.stringify(completionPlan.historyDetails) }
+                : {}),
           },
         })
       }

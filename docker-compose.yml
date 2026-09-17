@@ -35,6 +35,7 @@ services:
       # host.docker.internal. Falls back to keyword search when unset/unreachable.
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_MODEL: ${AI_MODEL:-}
+      AI_COACH_MODEL: ${AI_COACH_MODEL:-laguna-s}
       AI_API_KEY: ${AI_API_KEY:-}
     ports:
       - "3456:3456"

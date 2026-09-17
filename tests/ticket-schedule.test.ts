@@ -78,10 +78,25 @@ test('startDate remains calendar-date-only', () => {
   if (!result.ok) assert.match(result.error, /startDate/)
 })
 
+test('an unchanged automatic start may remain after an overdue due date', () => {
+  const existing = {
+    startDate: new Date('2026-09-17T00:00:00.000Z'),
+    dueDate: new Date('2026-09-10T00:00:00.000Z'),
+    startDateAutoFilled: true,
+  }
+
+  assert.equal(validateTicketSchedule({}, existing).ok, true)
+  assert.equal(validateTicketSchedule({ startDate: '2026-09-17' }, existing).ok, true)
+
+  const manualChange = validateTicketSchedule({ startDate: '2026-09-16' }, existing)
+  assert.equal(manualChange.ok, false)
+})
+
 test('merged schedule rejects a start date after due date but allows the same day', () => {
   const existing = {
     startDate: new Date('2026-09-10T00:00:00.000Z'),
     dueDate: new Date('2026-09-20T00:00:00.000Z'),
+    startDateAutoFilled: false,
   }
 
   const reversedByStart = validateTicketSchedule({ startDate: '2026-09-21' }, existing)

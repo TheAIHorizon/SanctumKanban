@@ -76,10 +76,12 @@ try {
     ['Finished early', alpha, users[1], -5, 2, 'DONE', 0],
     ['Finished on time', alpha, users[1], -3, 0, 'DONE', 0],
     ['Prior period finish', alpha, users[1], -60, -45, 'DONE', 0],
+    ['Started late fixture', alpha, users[1], -3, 5, 'DOING', undefined, 0],
+    ['Automatic start fixture', alpha, users[1], 0, 5, 'DOING', undefined, 0, true],
   ]
   const tickets = []
-  for (const [title, team, owner, start, due, status, completed] of fixtures) {
-    tickets.push(await prisma.ticket.create({ data: { title, description: 'Disposable local Gantt QA ticket; any prefilled completion is synthetic test data.', teamId: team.id, createdById: owner.id, assigneeId: owner.id, startDate: start === null ? null : day(start), dueDate: due === null ? null : day(due), completedAt: completed === undefined ? null : day(completed), status, position: tickets.length } }))
+  for (const [title, team, owner, start, due, status, completed, started, automatic = false] of fixtures) {
+    tickets.push(await prisma.ticket.create({ data: { title, description: 'Disposable local Gantt QA ticket; any prefilled timestamps are synthetic test data.', teamId: team.id, createdById: owner.id, assigneeId: owner.id, startDate: start === null ? null : day(start), dueDate: due === null ? null : day(due), completedAt: completed === undefined ? null : day(completed), startedAt: started === undefined ? null : day(started), startDateAutoFilled: automatic, status, position: tickets.length } }))
   }
   const { page, context } = await openAs(users[1])
   const chart = page.getByRole('region', { name: 'Gantt chart', exact: true })
@@ -96,6 +98,9 @@ try {
   await chart.getByRole('button', { name: /Open Prior period finish/ }).first().waitFor()
   assert.ok(await chart.getByTestId('gantt-early-remainder').count(), 'Early completion must visibly fade the remaining planned span')
   pass('early, late, on-time, legacy and overdue indicators, including actual-only date window')
+  assert.ok(await chart.getByText('Started 3 days late', { exact: true }).count())
+  assert.ok(await chart.getByText('Started · no original plan', { exact: true }).count())
+  pass('actual-start variance and automatic-start provenance are visible')
   await page.getByLabel('Team', { exact: true }).selectOption(bravo.id)
   assert.equal(await chart.getByRole('button', { name: /Open Network inventory/ }).count(), 0)
   await chart.getByRole('button', { name: /Open Peer team plan/ }).first().click()
@@ -138,6 +143,7 @@ try {
   await page.getByRole('heading', { name: 'Edit Ticket' }).waitFor({ state: 'hidden' })
   const reopened = await prisma.ticket.findUniqueOrThrow({ where: { id: tickets[0].id } })
   assert.equal(reopened.completedAt, null)
+  assert.ok(reopened.startedAt, 'First recorded Doing transition records actual start')
   pass('Kanban completion automatically stamps date, Gantt refreshes, and reopening clears it without changing plans')
   await page.getByLabel('Calendar window').selectOption('week')
   await page.getByRole('button', { name: 'Next week', exact: true }).click()

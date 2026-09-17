@@ -167,6 +167,8 @@ model Ticket {
   status       TicketStatus @default(BACKLOG)
   position     Int          @default(0)
   startDate    DateTime?    @db.Date
+  startedAt    DateTime?
+  startDateAutoFilled Boolean @default(false)
   dueDate      DateTime?
   completedAt  DateTime?
   teamId       String

@@ -9,6 +9,7 @@ import {
   isTicketStatus,
 } from '@/lib/ticket-completion'
 import { isTransactionConflict } from '@/lib/transaction-conflicts'
+import { planStartForNewTicket } from '@/lib/ticket-start'
 
 class TicketCreateError extends Error {
   constructor(message: string, readonly status: number) {
@@ -27,9 +28,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { title, description, teamId, assigneeId, status, tagIds } = body
 
-    if (Object.hasOwn(body, 'completedAt')) {
+    if (
+      Object.hasOwn(body, 'completedAt') ||
+      Object.hasOwn(body, 'startedAt') ||
+      Object.hasOwn(body, 'startDateAutoFilled')
+    ) {
       return NextResponse.json(
-        { error: 'completedAt is read-only' },
+        { error: 'completedAt, startedAt, and startDateAutoFilled are read-only' },
         { status: 400 }
       )
     }
@@ -132,7 +137,13 @@ export async function POST(request: NextRequest) {
         select: { position: true },
       })
 
-      const completedAt = completionForNewTicket(ticketStatus, new Date())
+      const now = new Date()
+      const completedAt = completionForNewTicket(ticketStatus, now)
+      const startPlan = planStartForNewTicket(ticketStatus, schedule.schedule.startDate, now)
+      const historyDetails = {
+        ...(completedAt && { completedAt: completedAt.toISOString() }),
+        ...startPlan.historyDetails,
+      }
       // Transaction-scoped equivalent of prisma.ticket.create keeps history atomic.
       const created = await tx.ticket.create({
         data: {
@@ -144,6 +155,11 @@ export async function POST(request: NextRequest) {
           position: (highestPosition?.position || 0) + 1,
           createdById: session.user.id,
           startDate: schedule.updates.startDate,
+          ...(startPlan.startDate !== schedule.updates.startDate && {
+            startDate: startPlan.startDate,
+          }),
+          startedAt: startPlan.startedAt,
+          startDateAutoFilled: startPlan.startDateAutoFilled,
           dueDate: schedule.updates.dueDate,
           completedAt,
           ...(tagIds && tagIds.length > 0 && {
@@ -175,8 +191,8 @@ export async function POST(request: NextRequest) {
           userId: session.user.id,
           action: 'created',
           toStatus: created.status,
-          ...(completedAt && {
-            details: JSON.stringify({ completedAt: completedAt.toISOString() }),
+          ...(Object.keys(historyDetails).length > 0 && {
+            details: JSON.stringify(historyDetails),
           }),
         },
       })

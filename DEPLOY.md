@@ -1,7 +1,9 @@
-# Deploying Sanctum Kanban (for an automated/keeper agent)
+# Fresh installation of Sanctum Kanban (disposable/demo environment)
+
+> **Existing student site? STOP and read [OPERATIONS.md](OPERATIONS.md) first.** The live NAS has student data and private deployment configuration. Do not run this seed-based quick start against it. In-place upgrades require a protected backup, restored-copy rehearsal, explicit outage approval, preserved volume/configuration, and acceptance through the exact public URL. The actual NAS source directory may not be a Git checkout.
 
 This is a self-contained runbook to deploy Sanctum Kanban with Docker and
-**populated demo data** (6 teams, ~160 tickets, DCWF alignment links) so
+**populated demo data** (5 generated teams, 150 generated tickets, DCWF alignment links; existing base sample data is additional) so
 evaluators can log in and see a fully-populated app immediately.
 
 The app is **Next.js 14 + PostgreSQL (Prisma) + NextAuth**. AI features are
@@ -66,13 +68,11 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3456/login   # expect 
 # DCWF reference data (needed for alignment reports + cohort builder)
 docker compose exec app npm run db:import-dcwf
 
-# Populated demo data: 6 teams, ~160 tickets, DCWF links, admin + demo users
+# Disposable demo only: 5 teams, 150 tickets, DCWF links, admin + demo users
 docker compose exec app npm run db:seed-demo
 ```
 
-`db:seed-demo` is idempotent (safe to re-run) and self-sufficient — it creates
-the admin if missing and requires the DCWF import above. For a **clean/empty**
-deploy instead, skip `db:seed-demo` and create your own admin.
+`db:seed-demo` regenerates fixed demo team IDs: it deletes/recreates their tickets and memberships. **It is not safe to rerun on boards containing student work.** It creates an admin if missing and requires the DCWF import above. For a clean non-demo deployment, skip this seed and provision the admin through an approved account-setup procedure.
 
 ### Logins after `db:seed-demo`
 
@@ -125,5 +125,4 @@ shows the demo teams and the **Reports** / **Cohort Builder** nav entries.
   `docker compose down` keeps it; `docker compose down -v` **deletes** it.
 - **Secrets**: `.env` is gitignored and must never be committed. Nothing in the
   repo contains credentials.
-- **Updates**: `git pull && docker compose up -d --build`. The entrypoint
-  re-syncs the schema automatically; your data volume is preserved.
+- **Updates to an existing site**: follow [OPERATIONS.md](OPERATIONS.md). Do not blindly pull/rebuild/restart: the entrypoint automatically synchronizes the schema, and a retained volume alone does not prove the data or public access were preserved.

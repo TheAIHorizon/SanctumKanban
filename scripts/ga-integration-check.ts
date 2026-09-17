@@ -495,6 +495,36 @@ async function main(): Promise<void> {
       assert.equal(history?.toStatus, 'DOING')
     })
 
+    await check('actual start is automatic, provenance-aware, protected, and stable across reopening', async () => {
+      const initial = await request(memberJar, `/api/tickets/${firstTicketId}`)
+      expectStatus(initial, 200, 'read first actual start')
+      assert.ok(initial.data.startedAt)
+      assert.equal(initial.data.startDateAutoFilled, true)
+      assert.equal(initial.data.startDate.slice(0, 10), initial.data.startedAt.slice(0, 10))
+      for (const status of ['DOING', 'BACKLOG', 'DOING']) {
+        const moved = await request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json: { status } })
+        expectStatus(moved, 200, 'start-preserving transition')
+        assert.equal(moved.data.startedAt, initial.data.startedAt)
+      }
+      for (const json of [{ startedAt: '2000-01-01T00:00:00Z' }, { startDateAutoFilled: false }]) {
+        const forged = await request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json })
+        expectStatus(forged, 400, 'actual start is server owned')
+      }
+      const overdue = await request(memberJar, '/api/tickets', { method: 'POST', json: { title: 'Overdue start fixture', teamId: memberTeam.id, status: 'DOING', dueDate: '2001-01-01' } })
+      expectStatus(overdue, 200, 'start overdue work')
+      assert.ok(overdue.data.startedAt)
+      assert.equal(overdue.data.startDateAutoFilled, true)
+      assert.equal(overdue.data.dueDate.slice(0, 10), '2001-01-01')
+      const roundtrip = await request(memberJar, `/api/tickets/${overdue.data.id}`, { method: 'PATCH', json: { startDate: overdue.data.startDate.slice(0, 10), dueDate: '2001-01-01', description: 'Unchanged automatic start must permit ordinary editor saves' } })
+      expectStatus(roundtrip, 200, 'overdue auto-start editor roundtrip')
+      assert.equal(roundtrip.data.startDateAutoFilled, true)
+      const planned = await request(memberJar, '/api/tickets', { method: 'POST', json: { title: 'Planned start fixture', teamId: memberTeam.id, status: 'DOING', startDate: '2026-01-01', dueDate: '2026-01-03' } })
+      expectStatus(planned, 200, 'start work with genuine plan')
+      assert.equal(planned.data.startDateAutoFilled, false)
+      assert.equal(planned.data.startDate.slice(0, 10), '2026-01-01')
+      assert.ok(planned.data.startedAt)
+    })
+
     await check('completion timestamps follow real status transitions and cannot be forged', async () => {
       const before = Date.now()
       const initialRace = await Promise.all([0, 1].map(() => request(memberJar, `/api/tickets/${firstTicketId}`, { method: 'PATCH', json: { status: 'DONE' } })))

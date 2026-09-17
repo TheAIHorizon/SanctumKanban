@@ -50,3 +50,6 @@ prisma/seed-workload.ts
 
 # Hermes agent workspace (local plans, not published)
 .hermes/
+
+# Private site inventory and operational records; never publish credentials/backups.
+.ops/

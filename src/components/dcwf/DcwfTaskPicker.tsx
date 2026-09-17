@@ -19,6 +19,20 @@ interface DcwfTask {
   ksatId: string
   description: string
   workRoles: WorkRoleRef[]
+  rationale?: string
+  source?: {
+    kind: 'imported-dcwf'
+    ksatId: string
+    description: string
+  }
+}
+
+interface SuggestResponse {
+  tasks: DcwfTask[]
+  usedAi: boolean
+  mode: 'ai' | 'fallback'
+  model: string | null
+  candidateCount: number
 }
 
 interface TaskLink {
@@ -49,8 +63,12 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
   const [searching, setSearching] = useState(false)
   const [inScopeOnly, setInScopeOnly] = useState(true)
   const [suggesting, setSuggesting] = useState(false)
+  const [suggestError, setSuggestError] = useState<string | null>(null)
+  const [suggestMode, setSuggestMode] = useState<'ai' | 'fallback' | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const suggestController = useRef<AbortController | null>(null)
+  const suggestGeneration = useRef(0)
 
   const loadLinks = useCallback(async () => {
     setLoading(true)
@@ -65,6 +83,17 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
   useEffect(() => {
     loadLinks()
   }, [loadLinks])
+
+  useEffect(() => {
+    suggestGeneration.current += 1
+    suggestController.current?.abort()
+    suggestController.current = null
+    setSuggesting(false)
+    setSuggestError(null)
+    setSuggestMode(null)
+    setResults([])
+    return () => suggestController.current?.abort()
+  }, [ticketId, suggestText, inScopeOnly])
 
   // Debounced search
   useEffect(() => {
@@ -119,19 +148,56 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
 
   async function suggest() {
     if (!suggestText?.trim()) return
+    suggestController.current?.abort()
+    const controller = new AbortController()
+    const generation = suggestGeneration.current + 1
+    suggestGeneration.current = generation
+    suggestController.current = controller
     setSuggesting(true)
+    setSuggestError(null)
+    setSuggestMode(null)
     try {
       const res = await fetch('/api/dcwf/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: suggestText, inScopeOnly }),
+        body: JSON.stringify({ ticketId, text: suggestText, inScopeOnly }),
+        signal: controller.signal,
       })
-      if (res.ok) {
-        const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error('Too many suggestion requests. Wait a moment and try again.')
+        }
+        let detail = ''
+        try {
+          const body = await res.json()
+          detail = typeof body?.error === 'string' ? body.error : ''
+        } catch {
+          // Use the generic network/server message below.
+        }
+        throw new Error(detail || 'Suggestions could not be loaded. Check your connection and try again.')
+      }
+
+      const data = (await res.json()) as SuggestResponse
+      if (generation === suggestGeneration.current && !controller.signal.aborted) {
         setResults(data.tasks || [])
+        setSuggestMode(data.mode === 'fallback' || !data.usedAi ? 'fallback' : 'ai')
+      }
+    } catch (error) {
+      if (
+        generation === suggestGeneration.current &&
+        !(error instanceof DOMException && error.name === 'AbortError')
+      ) {
+        setSuggestError(
+          error instanceof Error
+            ? error.message
+            : 'Suggestions could not be loaded. Check your connection and try again.'
+        )
       }
     } finally {
-      setSuggesting(false)
+      if (generation === suggestGeneration.current) {
+        suggestController.current = null
+        setSuggesting(false)
+      }
     }
   }
 
@@ -203,6 +269,7 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
                       onClick={() => setExpanded((p) => ({ ...p, [link.id]: !isOpen }))}
                       className="text-muted-foreground hover:text-foreground"
                       title={isOpen ? 'Hide note' : 'Add/edit note'}
+                      aria-label={isOpen ? 'Hide DCWF reflection note' : 'Add or edit DCWF reflection note'}
                     >
                       {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                     </button>
@@ -211,6 +278,7 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
                       onClick={() => removeLink(link.id)}
                       className="text-destructive hover:text-destructive/80"
                       title="Remove link"
+                      aria-label="Remove DCWF task link"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -242,8 +310,13 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setSuggestError(null)
+                setSuggestMode(null)
+              }}
               placeholder="Search DCWF tasks…"
+              aria-label="Search DCWF tasks"
               className="pl-8 h-8 text-sm"
             />
           </div>
@@ -256,6 +329,7 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
               disabled={suggesting}
               className="h-8 shrink-0"
               title="Suggest DCWF tasks from the ticket text (local AI)"
+              aria-label="Suggest DCWF tasks from this ticket draft"
             >
               {suggesting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -266,6 +340,23 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
             </Button>
           )}
         </div>
+
+        {suggestError && (
+          <div role="alert" className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+            {suggestError}{' '}
+            <button type="button" onClick={suggest} disabled={suggesting} className="font-medium underline">
+              Try again
+            </button>
+          </div>
+        )}
+
+        {suggestMode && (
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {suggestMode === 'fallback'
+              ? 'Keyword fallback — no validated AI selection was available.'
+              : 'CoyoteGPT selected these suggestions.'}
+          </p>
+        )}
 
         {searching && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">

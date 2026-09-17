@@ -2,6 +2,8 @@
 import { assigneeFromSelection } from '@/lib/ticket-form-options'
 import { validateTicketSchedule } from '@/lib/ticket-schedule'
 import { TicketCompletionDetails } from './TicketCompletionDetails'
+import { TicketStartDetails } from './TicketStartDetails'
+import { TicketAiCoach } from './TicketAiCoach'
 
 import { useState, useEffect } from 'react'
 import {
@@ -69,6 +71,8 @@ interface Ticket {
   startDate?: Date | string | null
   dueDate?: Date | string | null
   completedAt?: Date | string | null
+  startedAt?: Date | string | null
+  startDateAutoFilled?: boolean
   assignee: User | null
   teamId: string
   tags?: TicketTag[]
@@ -102,6 +106,7 @@ export function EditTicketDialog({
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState('details')
 
   // Comments state
   const [comments, setComments] = useState<Comment[]>([])
@@ -122,6 +127,7 @@ export function EditTicketDialog({
       setSelectedTagIds(ticket.tags?.map(t => t.tag.id) || [])
       setError('')
       setNewComment('')
+      setActiveTab('details')
     }
   }, [open, ticket])
 
@@ -193,7 +199,11 @@ export function EditTicketDialog({
     try {
       const schedule = validateTicketSchedule(
         { startDate: startDate || null, dueDate: dueDate || null },
-        { startDate: null, dueDate: null },
+        {
+          startDate: ticket.startDate ? new Date(ticket.startDate) : null,
+          dueDate: ticket.dueDate ? new Date(ticket.dueDate) : null,
+          startDateAutoFilled: ticket.startDateAutoFilled,
+        },
       )
       if (!schedule.ok) throw new Error(schedule.error)
 
@@ -248,9 +258,10 @@ export function EditTicketDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="details" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="coach">AI Coach</TabsTrigger>
             <TabsTrigger value="dcwf">DCWF</TabsTrigger>
             <TabsTrigger value="comments">
               Comments {comments.length > 0 && `(${comments.length})`}
@@ -316,6 +327,11 @@ export function EditTicketDialog({
                     onChange={(e) => setStartDate(e.target.value)}
                     disabled={loading}
                   />
+                  {ticket.startDateAutoFilled && (
+                    <p className="text-xs text-muted-foreground">
+                      This date was filled automatically when the ticket first entered Doing. Edit it to set a planned start.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-due-date">Due Date</Label>
@@ -329,6 +345,11 @@ export function EditTicketDialog({
                 </div>
               </div>
 
+              <TicketStartDetails
+                startedAt={ticket.startedAt}
+                startDate={ticket.startDate}
+                startDateAutoFilled={ticket.startDateAutoFilled}
+              />
               <TicketCompletionDetails status={ticket.status} completedAt={ticket.completedAt} />
               <div className="space-y-2">
                 <Label htmlFor="edit-assignee">Assignee</Label>
@@ -404,6 +425,15 @@ export function EditTicketDialog({
                 </Button>
               </DialogFooter>
             </form>
+          </TabsContent>
+
+          <TabsContent value="coach" className="flex-1 overflow-auto p-1">
+            <TicketAiCoach
+              ticketId={ticket.id}
+              title={title}
+              description={description}
+              onOpenDcwf={() => setActiveTab('dcwf')}
+            />
           </TabsContent>
 
           <TabsContent value="dcwf" className="flex-1 overflow-auto p-1">

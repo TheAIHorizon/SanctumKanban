@@ -1,6 +1,8 @@
 export interface TicketSchedule {
   startDate: Date | null
   dueDate: Date | null
+  /** True only when the server supplied startDate on first actual start. */
+  startDateAutoFilled?: boolean
 }
 
 export interface TicketScheduleInput {
@@ -103,10 +105,18 @@ export function validateTicketSchedule(
     dueDate: hasDueDate ? updates.dueDate! : existing.dueDate,
   }
 
+  const unchangedAutomaticStart = Boolean(
+    existing.startDateAutoFilled &&
+    schedule.startDate !== null &&
+    existing.startDate !== null &&
+    schedule.startDate.getTime() === existing.startDate.getTime()
+  )
+
   if (
     schedule.startDate !== null &&
     schedule.dueDate !== null &&
-    schedule.startDate.getTime() > schedule.dueDate.getTime()
+    schedule.startDate.getTime() > schedule.dueDate.getTime() &&
+    !unchangedAutomaticStart
   ) {
     return {
       ok: false,

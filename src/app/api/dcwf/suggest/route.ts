@@ -1,139 +1,194 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { chat, AiUnavailableError } from '@/lib/ai'
 
-// POST /api/dcwf/suggest  { text, inScopeOnly? }
-// Suggest the DCWF Tasks that best match a free-text description of work done.
-// Strategy: keyword-prefilter candidates from the DB, then ask a local/OpenAI-
-// compatible model to pick the best few. Falls back to keyword ranking when AI
-// is unreachable, so suggestions NEVER block ticket logging.
+import { chat } from '@/lib/ai'
+import { authOptions } from '@/lib/auth'
+import {
+  authorizeDcwfSuggestion,
+  buildCoachMessages,
+  buildFallbackAdvice,
+  parseGroundedAdvice,
+  rankDcwfTasks,
+  type DcwfAdvice,
+  type DcwfCandidate,
+} from '@/lib/dcwf-suggest'
+import { prisma } from '@/lib/prisma'
+import type { Role } from '@/lib/permissions'
+
+const coachModel = process.env.AI_COACH_MODEL || 'laguna-s'
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX_REQUESTS = 4
+const RATE_COOLDOWN_MS = 3_000
+const RATE_USER_LIMIT = 500
+const recentRequests = new Map<string, number[]>()
+
+function takeRateSlot(userId: string, now = Date.now()): { ok: true } | { ok: false; retryAfter: number } {
+  const recent = (recentRequests.get(userId) || []).filter((time) => now - time < RATE_WINDOW_MS)
+  const last = recent[recent.length - 1]
+  if ((last != null && now - last < RATE_COOLDOWN_MS) || recent.length >= RATE_MAX_REQUESTS) {
+    const waitMs = last != null && now - last < RATE_COOLDOWN_MS
+      ? RATE_COOLDOWN_MS - (now - last)
+      : RATE_WINDOW_MS - (now - recent[0])
+    recentRequests.set(userId, recent)
+    return { ok: false, retryAfter: Math.max(1, Math.ceil(waitMs / 1000)) }
+  }
+
+  recent.push(now)
+  recentRequests.set(userId, recent)
+  if (recentRequests.size > RATE_USER_LIMIT) {
+    for (const storedUser of Array.from(recentRequests.keys())) {
+      if (storedUser !== userId) {
+        recentRequests.delete(storedUser)
+        break
+      }
+    }
+  }
+  return { ok: true }
+}
+
+// POST /api/dcwf/suggest { ticketId, text, inScopeOnly? }
+// `text` may contain unsaved draft text. No ticket or DCWF records are written.
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    if (session.user.role === 'OBSERVER') {
+      return NextResponse.json({ error: 'Observers cannot request DCWF coaching' }, { status: 403 })
+    }
 
-    const body = await request.json()
-    const text: string = (body?.text || '').toString().trim()
-    const inScopeOnly: boolean = body?.inScopeOnly !== false // default true
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+    const input = body as { ticketId?: unknown; text?: unknown; inScopeOnly?: unknown }
+    const ticketId = typeof input?.ticketId === 'string' ? input.ticketId.trim() : ''
+    const text = typeof input?.text === 'string' ? input.text.trim() : ''
+    const inScopeOnly = input?.inScopeOnly !== false
+    if (!ticketId) {
+      return NextResponse.json({ error: 'ticketId is required' }, { status: 400 })
+    }
     if (!text) {
       return NextResponse.json({ error: 'text is required' }, { status: 400 })
     }
+    if (text.length > 12_000) {
+      return NextResponse.json({ error: 'text must be 12000 characters or fewer' }, { status: 400 })
+    }
 
-    // 1) Keyword prefilter: derive salient words, pull candidate Task KSATs.
-    const words = Array.from(
-      new Set(
-        text
-          .toLowerCase()
-          .replace(/[^a-z0-9\s]/g, ' ')
-          .split(/\s+/)
-          .filter((w) => w.length >= 4)
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: {
+        id: true,
+        teamId: true,
+        assigneeId: true,
+        createdById: true,
+        archived: true,
+        team: {
+          select: {
+            members: {
+              where: { userId: session.user.id },
+              select: { role: true },
+            },
+            classWorkspace: { select: { archivedAt: true } },
+          },
+        },
+      },
+    })
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+
+    const authorization = authorizeDcwfSuggestion(
+      { id: session.user.id, role: session.user.role as Role },
+      {
+        ticketId: ticket.id,
+        teamId: ticket.teamId,
+        archived: ticket.archived,
+        classArchived: Boolean(ticket.team.classWorkspace?.archivedAt),
+        assigneeId: ticket.assigneeId,
+        createdById: ticket.createdById,
+        membershipRole: ticket.team.members[0]?.role || null,
+      }
+    )
+    if (!authorization.ok) {
+      return NextResponse.json({ error: authorization.error }, { status: authorization.status })
+    }
+
+    const rate = takeRateSlot(session.user.id)
+    if (!rate.ok) {
+      return NextResponse.json(
+        { error: 'Please wait before requesting more coaching suggestions' },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfter) } }
       )
-    ).slice(0, 12)
+    }
 
     const roleFilter = inScopeOnly
       ? { roles: { some: { workRole: { inScope: true } } } }
       : {}
-
-    let candidates = await prisma.dcwfKsat.findMany({
-      where: {
-        type: 'Task',
-        ...roleFilter,
-        ...(words.length
-          ? { OR: words.map((w) => ({ description: { contains: w, mode: 'insensitive' as const } })) }
-          : {}),
-      },
-      take: 40,
+    const rows = await prisma.dcwfKsat.findMany({
+      where: { type: 'Task', ...roleFilter },
+      orderBy: { ksatId: 'asc' },
       select: {
         id: true,
         ksatId: true,
         description: true,
         roles: {
-          select: { coreOrAdditional: true, workRole: { select: { code: true, title: true, inScope: true } } },
+          select: {
+            coreOrAdditional: true,
+            workRole: { select: { code: true, title: true, inScope: true } },
+          },
         },
       },
     })
-
-    // If keyword prefilter found nothing, widen to any in-scope tasks so the AI
-    // still has something to rank (rare).
-    if (candidates.length === 0) {
-      candidates = await prisma.dcwfKsat.findMany({
-        where: { type: 'Task', ...roleFilter },
-        take: 40,
-        select: {
-          id: true,
-          ksatId: true,
-          description: true,
-          roles: {
-            select: { coreOrAdditional: true, workRole: { select: { code: true, title: true, inScope: true } } },
-          },
-        },
-      })
-    }
-
-    const shape = (t: (typeof candidates)[number]) => ({
-      id: t.id,
-      ksatId: t.ksatId,
-      description: t.description,
-      workRoles: t.roles.map((r) => ({
-        code: r.workRole.code,
-        title: r.workRole.title,
-        inScope: r.workRole.inScope,
-        coreOrAdditional: r.coreOrAdditional,
+    const importedTasks: DcwfCandidate[] = rows.map((row) => ({
+      id: row.id,
+      ksatId: row.ksatId,
+      description: row.description,
+      workRoles: row.roles.map((role) => ({
+        code: role.workRole.code,
+        title: role.workRole.title,
+        inScope: role.workRole.inScope,
+        coreOrAdditional: role.coreOrAdditional,
       })),
+    }))
+    const candidates = rankDcwfTasks(text, importedTasks, 20)
+
+    let advice: DcwfAdvice = buildFallbackAdvice(text, candidates)
+    let fallbackReason: string | null = candidates.length ? 'invalid_response' : 'no_candidates'
+    if (candidates.length > 0) {
+      try {
+        const raw = await chat(buildCoachMessages(text, candidates), {
+          model: coachModel,
+          json: true,
+          temperature: 0.1,
+          maxTokens: 1800,
+          timeoutMs: 45_000,
+        })
+        const validated = parseGroundedAdvice(text, candidates, raw)
+        if (validated) {
+          advice = validated
+          fallbackReason = null
+        }
+      } catch {
+        fallbackReason = 'request_failed'
+        // Local model unavailable or timed out. The grounded deterministic response remains useful.
+      }
+    }
+
+    return NextResponse.json({
+      guidance: advice.guidance,
+      tasks: advice.tasks,
+      usedAi: advice.usedAi,
+      candidateCount: candidates.length,
+      mode: advice.mode,
+      fallbackReason,
+      model: advice.usedAi ? coachModel : null,
     })
-
-    // 2) Ask the model to pick the best matches, by id.
-    let orderedIds: string[] | null = null
-    let usedAi = false
-    try {
-      const list = candidates
-        .map((c, i) => `${i + 1}. [${c.id}] (${c.ksatId}) ${c.description}`)
-        .join('\n')
-      const content = await chat(
-        [
-          {
-            role: 'system',
-            content:
-              'You map a student\'s description of IT/cybersecurity work to the most relevant DoD Cyber Workforce Framework (DCWF) tasks. ' +
-              'Given the work description and a numbered list of candidate tasks, return ONLY a JSON object of the form ' +
-              '{"ids": ["<id>", ...]} listing the 3-5 best-matching candidate ids in ranked order. Use only ids from the list.',
-          },
-          {
-            role: 'user',
-            content: `WORK DESCRIPTION:\n${text}\n\nCANDIDATE TASKS:\n${list}\n\nReturn the best 3-5 ids as JSON.`,
-          },
-        ],
-        { json: true, temperature: 0.1, maxTokens: 300 }
-      )
-      usedAi = true
-      const parsed = JSON.parse(content)
-      if (Array.isArray(parsed?.ids)) {
-        const validIds = new Set(candidates.map((c) => c.id))
-        orderedIds = parsed.ids.filter((id: unknown) => typeof id === 'string' && validIds.has(id)).slice(0, 5)
-      }
-    } catch (err) {
-      // AI unreachable or bad output — fall back to keyword order below.
-      if (!(err instanceof AiUnavailableError)) {
-        console.warn('AI suggest parse issue, falling back to keyword ranking:', err)
-      }
-    }
-
-    // 3) Build the result: AI order if we got it, else keyword prefilter order.
-    let tasks
-    if (orderedIds && orderedIds.length) {
-      const byId = new Map(candidates.map((c) => [c.id, c]))
-      tasks = orderedIds.map((id) => shape(byId.get(id)!)).filter(Boolean)
-    } else {
-      tasks = candidates.slice(0, 5).map(shape)
-    }
-
-    return NextResponse.json({ tasks, usedAi, candidateCount: candidates.length })
-  } catch (error) {
-    console.error('DCWF suggest failed:', error)
+  } catch {
+    // Deliberately do not log prompts, student text, credentials, or model payloads.
     return NextResponse.json({ error: 'Failed to generate suggestions' }, { status: 500 })
   }
 }

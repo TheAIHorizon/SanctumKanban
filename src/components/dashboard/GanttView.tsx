@@ -25,6 +25,7 @@ import {
   type GanttScale,
 } from '@/lib/gantt'
 import { getGanttCompletion, layoutGanttCompletion } from '@/lib/gantt-completion'
+import { getGanttStart, layoutGanttStart } from '@/lib/gantt-start'
 import { useLocalToday } from '@/hooks/useLocalToday'
 import { cn, getContrastColor } from '@/lib/utils'
 
@@ -63,6 +64,8 @@ export interface GanttTicket {
   startDate?: Date | string | null
   dueDate?: Date | string | null
   completedAt?: Date | string | null
+  startedAt?: Date | string | null
+  startDateAutoFilled?: boolean
   assignee: GanttUser | null
   tags?: GanttTicketTag[]
 }
@@ -123,6 +126,7 @@ function TicketDetailsDialog({
   today: Date
 }) {
   const completion = getGanttCompletion(ticket, today)
+  const start = getGanttStart(ticket)
   const actualCompletion = ticket.completedAt
     ? formatCalendarDate(ticket.completedAt)
     : completion.kind === 'legacy'
@@ -146,12 +150,16 @@ function TicketDetailsDialog({
             <dd>{ticket.assignee ? `${ticket.assignee.firstName} ${ticket.assignee.lastName}` : 'Unassigned'}</dd>
           </div>
           <div>
-            <dt className="font-medium text-muted-foreground">Planned start</dt>
+            <dt className="font-medium text-muted-foreground">{ticket.startDateAutoFilled ? 'Automatic start' : 'Planned start'}</dt>
             <dd>{ticket.startDate ? formatCalendarDate(ticket.startDate) : 'Not set'}</dd>
           </div>
           <div>
             <dt className="font-medium text-muted-foreground">Expected end</dt>
             <dd>{ticket.dueDate ? formatCalendarDate(ticket.dueDate) : 'Not set'}</dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="font-medium text-muted-foreground">Actual start (UTC)</dt>
+            <dd>{ticket.startedAt ? formatCalendarDate(ticket.startedAt) : 'Not started'}{start.label ? ` · ${start.label}` : ''}</dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="font-medium text-muted-foreground">Actual completion (UTC)</dt>
@@ -310,7 +318,7 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
         </p>
       </div>
 
-      <p className="text-xs text-muted-foreground">Colored bars: planned dates · ◆ Actual finish · Solid red: finished late · Dashed red: overdue, not completed. Differences use UTC calendar dates.</p>
+      <p className="text-xs text-muted-foreground">Solid bars: planned start to expected end · Dashed outline: automatic start to expected end · ● Actual start / Started variance · ◆ Actual finish · Solid red: finished late · Dashed red: overdue, not completed. Differences use UTC calendar dates.</p>
       <div ref={scrollRegion} className="max-w-full overflow-x-auto rounded-lg border bg-card" style={{ containerType: 'inline-size' }} data-testid="gantt-scroll-region">
         <div style={{ width: labelWidth + timelineWidth, minWidth: '100%' }}>
           <div className="flex border-b bg-muted/50">
@@ -370,6 +378,7 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
 
                     {result.scheduled.map(({ ticket, layout }) => {
                       const visual = layoutGanttCompletion(ticket, today, windowRange)
+                      const startVisual = layoutGanttStart(ticket, windowRange)
                       const { completion } = visual
                       const overdue = completion.kind === 'overdue'
                       const color = ticket.assignee?.color || '#64748b'
@@ -388,6 +397,11 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
                             <span className={cn('text-xs text-muted-foreground', overdue && 'font-semibold text-destructive')}>
                               {STATUS_LABELS[ticket.status]}{overdue ? ' · Overdue' : ''}
                             </span>
+                            {startVisual.start.label && (
+                              <span className={cn('truncate text-[11px] text-muted-foreground', startVisual.start.kind === 'late' && 'text-amber-700 dark:text-amber-400')}>
+                                {startVisual.start.label}
+                              </span>
+                            )}
                             {completion.label && (
                               <span className={cn('truncate text-[11px] text-muted-foreground', (completion.kind === 'late' || overdue) && 'text-destructive')}>
                                 {completion.label}
@@ -403,15 +417,41 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
                             {layout && (
                               <button
                                 type="button"
-                                className="absolute top-2 z-[2] h-10 overflow-hidden rounded-md px-2 text-left text-xs shadow-sm ring-1 ring-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className={cn(
+                                  'absolute top-2 z-[2] h-10 overflow-hidden rounded-md px-2 text-left text-xs shadow-sm ring-1 ring-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                  ticket.startDateAutoFilled && 'border-2 border-dashed border-foreground/60'
+                                )}
                                 style={{ left: `${layout.leftPercent}%`, width: `${layout.widthPercent}%`, backgroundColor: color, color: textColor }}
                                 onClick={() => openTicket(team.id, ticket.id)}
                                 aria-label={`Open ${ticket.title}, ${dateLabel}${layout.clippedStart || layout.clippedEnd ? ', clipped to visible range' : ''}`}
-                                title={`${ticket.title} · ${dateLabel}`}
+                                title={ticket.startDateAutoFilled
+                                  ? `${ticket.title} · Automatic start to expected end · ${dateLabel}`
+                                  : `${ticket.title} · ${dateLabel}`}
                               >
                                 <span className="block truncate font-semibold">{layout.clippedStart ? '← ' : ''}{ticket.title}{layout.clippedEnd ? ' →' : ''}</span>
                                 <span className="block truncate opacity-90">{STATUS_LABELS[ticket.status]}{overdue ? ' · Overdue' : ''}</span>
                               </button>
+                            )}
+                            {startVisual.tail && (
+                              <span
+                                className={cn(
+                                  'absolute top-3 z-[3] h-1',
+                                  startVisual.tail.kind === 'late' ? 'bg-amber-600' : 'bg-sky-500/50'
+                                )}
+                                style={{ left: `${startVisual.tail.leftPercent}%`, width: `${startVisual.tail.widthPercent}%` }}
+                                title={startVisual.start.label || undefined}
+                                aria-hidden="true"
+                              />
+                            )}
+                            {startVisual.marker && (
+                              <button
+                                type="button"
+                                className="absolute top-[8px] z-[4] h-3 w-3 -translate-x-1/2 rounded-full border-2 border-background bg-blue-600 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                style={{ left: `${startVisual.marker.leftPercent}%` }}
+                                onClick={() => openTicket(team.id, ticket.id)}
+                                aria-label={`Actual start ${formatCalendarDate(startVisual.marker.date)}${startVisual.start.label ? `, ${startVisual.start.label}` : ''}`}
+                                title={`Actual start: ${formatCalendarDate(startVisual.marker.date)}${startVisual.start.label ? ` · ${startVisual.start.label}` : ''}`}
+                              />
                             )}
                             {visual.tail?.kind === 'early' && layout && (
                               <span
@@ -470,6 +510,7 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
                         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                           {result.unscheduled.map(({ ticket, reason }) => {
                             const completion = getGanttCompletion(ticket, today)
+                            const start = getGanttStart(ticket)
                             return (
                               <button
                                 type="button"
@@ -483,6 +524,11 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
                                 {completion.label && (
                                   <span className={cn('block text-xs text-muted-foreground', completion.kind === 'late' && 'text-destructive')}>
                                     {completion.actualDate ? `${completion.label} · ${formatCalendarDate(completion.actualDate)}` : completion.label}
+                                  </span>
+                                )}
+                                {start.label && (
+                                  <span className="block text-xs text-muted-foreground">
+                                    {start.label} · {formatCalendarDate(start.actualDate!)}
                                   </span>
                                 )}
                               </button>

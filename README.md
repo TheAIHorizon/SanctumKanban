@@ -1,5 +1,7 @@
 # Sanctum Kanban
 
+> **LIVE SITE OPERATORS:** Read [OPERATIONS.md](OPERATIONS.md) before making changes. This installation is used by students. Preserve its database and verify the exact shared URL; local tests and a GitHub push do not establish live availability. Private target details are in the gitignored `.ops/site.local.json` file. The fresh-install/demo instructions below are not an in-place production update procedure.
+
 A self-hosted multi-team kanban application with announcements, drag-and-drop tickets, color-coded team members, and reflection boards. Real-time collaboration is planned but not yet implemented — see [Real-Time Updates](#real-time-updates) below.
 
 **Part of the [Sanctum Suite](https://github.com/TheAIHorizon)** — Privacy-first, local-AI productivity tools.
@@ -20,6 +22,8 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 ### User and GA documentation
 
 - [User manual (offline HTML)](docs/user-manual.html)
+- [AI Coach and grounded DCWF guidance](docs/ai-coach.html)
+- [Live student-site operations and incident/rollback procedures](OPERATIONS.md)
 - [Gantt guide and safe future NAS rollout](docs/gantt-guide.html)
 - [Automatic completion tracking and planned/actual comparison](docs/completion-tracking.html)
 - [GA system check and acceptance checklist (offline HTML)](docs/ga-system-check.html)

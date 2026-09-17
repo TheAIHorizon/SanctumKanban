@@ -97,6 +97,8 @@ interface Ticket {
   startDate?: Date | string | null
   dueDate?: Date | string | null
   completedAt?: Date | string | null
+  startedAt?: Date | string | null
+  startDateAutoFilled?: boolean
   assignee: User | null
   teamId: string
   tags?: { tag: Tag }[]

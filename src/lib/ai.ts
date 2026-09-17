@@ -5,7 +5,7 @@
  * same code points at any OpenAI-compatible endpoint:
  *   - Ollama:     AI_BASE_URL=http://localhost:11434/v1   AI_MODEL=qwen3.8:27b
  *   - OpenWebUI:  AI_BASE_URL=http://<host>/api            AI_MODEL=<served-model>
- *   - Hosted:     AI_BASE_URL=https://api.openai.com/v1    AI_MODEL=gpt-4o-mini  AI_API_KEY=sk-...
+ *   - CoyoteGPT:  user-owned OpenWebUI endpoint; coaching uses AI_COACH_MODEL=laguna-s.
  *
  * Defaults to local Ollama. AI features degrade gracefully when unreachable.
  */
@@ -28,10 +28,13 @@ export class AiUnavailableError extends Error {}
  */
 export async function chat(
   messages: ChatMessage[],
-  opts: { temperature?: number; maxTokens?: number; json?: boolean } = {}
+  opts: { temperature?: number; maxTokens?: number; json?: boolean; model?: string; timeoutMs?: number } = {}
 ): Promise<string> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS)
+  const timeoutMs = opts.timeoutMs == null
+    ? AI_TIMEOUT_MS
+    : Math.max(1, Math.min(opts.timeoutMs, 45_000))
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(`${AI_BASE_URL.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
@@ -41,7 +44,7 @@ export async function chat(
         ...(AI_API_KEY ? { Authorization: `Bearer ${AI_API_KEY}` } : {}),
       },
       body: JSON.stringify({
-        model: AI_MODEL,
+        model: opts.model || AI_MODEL,
         messages,
         temperature: opts.temperature ?? 0.2,
         max_tokens: opts.maxTokens ?? 512,
