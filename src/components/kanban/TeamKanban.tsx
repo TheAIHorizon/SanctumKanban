@@ -15,6 +15,10 @@ import { getInitials } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { KeyboardShortcutsHelp } from '@/components/keyboard/KeyboardShortcutsHelp'
 import { applyTicketPositions } from '@/lib/team-ticket-state'
+import { TeamFeedback } from '@/components/feedback/TeamFeedback'
+import { FeedbackTicketDialog } from '@/components/feedback/FeedbackTicketDialog'
+import { canReadTeamFeedback } from '@/lib/team-feedback'
+import { canReadSavedGuidance } from '@/lib/saved-ticket-guidance'
 
 interface User {
   id: string
@@ -89,21 +93,28 @@ interface TeamKanbanProps {
   currentUser: CurrentUser
   isTeamLead: boolean
   isMember?: boolean
+  viewerRole?: string
+  readOnly?: boolean
 }
 
-export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanbanProps) {
+export function TeamKanban({ team, currentUser, isTeamLead, isMember, viewerRole = currentUser.role, readOnly = false }: TeamKanbanProps) {
   const [showMembers, setShowMembers] = useState(false)
+  const [feedbackTicketId, setFeedbackTicketId] = useState<string | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [tickets, setTickets] = useState(team.tickets)
   useEffect(() => { setTickets(team.tickets) }, [team.tickets])
   const [compactView, setCompactView] = useState(true) // Default to compact
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const canCreateTickets =
     currentUser.role === 'ADMIN' || isTeamLead || (isMember ?? false)
   const canUseMyTickets = canFilterMyTickets(team.members, currentUser.id)
+  const isCurrentTeamMember = team.members.some(member => member.userId === currentUser.id)
+  const canReadFeedback = canReadTeamFeedback(viewerRole, isCurrentTeamMember)
+  const canViewGuidance = canReadSavedGuidance(viewerRole, isCurrentTeamMember)
   useEffect(() => {
     if (!canUseMyTickets) setFilters(prev => ({ ...prev, myTicketsOnly: false }))
   }, [canUseMyTickets])
@@ -220,7 +231,10 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-xl">{team.name}</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              {team.name}
+              {canReadFeedback && unreadCount > 0 && <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">{unreadCount} unread</span>}
+            </CardTitle>
             {team.description && (
               <p className="text-sm text-muted-foreground mt-1">
                 {team.description}
@@ -312,6 +326,12 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
               Reflection
             </TabsTrigger>
             <TabsTrigger value="notes">Team Notes</TabsTrigger>
+            {canReadFeedback && (
+              <TabsTrigger value="feedback" className="flex items-center gap-1">
+                Feedback
+                {unreadCount > 0 && <span className="rounded-full bg-blue-600 px-1.5 text-[10px] text-white">{unreadCount}</span>}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="kanban" className="mt-0">
@@ -329,6 +349,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
               tags={team.tags || []}
               currentUser={currentUser}
               isTeamLead={isTeamLead}
+              canViewGuidance={canViewGuidance}
               compactView={compactView}
               hideColumns={filters.hideColumns}
               onTicketUpdated={handleTicketUpdated}
@@ -347,6 +368,18 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
           <TabsContent value="notes" className="mt-0">
             <TeamNotes teamId={team.id} canEdit={canCreateTickets && currentUser.role !== 'OBSERVER'} />
           </TabsContent>
+          {canReadFeedback && (
+            <TabsContent value="feedback" forceMount className="mt-0 data-[state=inactive]:hidden">
+              <TeamFeedback
+                teamId={team.id}
+                tickets={tickets.map(ticket => ({ id: ticket.id, title: ticket.title }))}
+                isAdmin={viewerRole === 'ADMIN'}
+                readOnly={readOnly}
+                onUnreadCountChange={setUnreadCount}
+                onOpenTicket={setFeedbackTicketId}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </CardContent>
 
@@ -359,6 +392,16 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember }: TeamKanb
         onTicketCreated={handleTicketCreated}
       />
 
+      {canReadFeedback && feedbackTicketId && (
+        <FeedbackTicketDialog
+          ticketId={feedbackTicketId}
+          team={{ ...team, tickets }}
+          currentUser={{ ...currentUser, role: viewerRole }}
+          readOnly={readOnly}
+          onClose={() => setFeedbackTicketId(null)}
+          onUpdated={handleTicketUpdated}
+        />
+      )}
       <KeyboardShortcutsHelp
         open={shortcutsHelpOpen}
         onOpenChange={setShortcutsHelpOpen}

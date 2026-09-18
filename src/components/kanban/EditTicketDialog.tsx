@@ -4,6 +4,7 @@ import { validateTicketSchedule } from '@/lib/ticket-schedule'
 import { TicketCompletionDetails } from './TicketCompletionDetails'
 import { TicketStartDetails } from './TicketStartDetails'
 import { TicketAiCoach } from './TicketAiCoach'
+import { SavedTicketGuidance } from './SavedTicketGuidance'
 
 import { useState, useEffect } from 'react'
 import {
@@ -428,12 +429,15 @@ export function EditTicketDialog({
           </TabsContent>
 
           <TabsContent value="coach" className="flex-1 overflow-auto p-1">
-            <TicketAiCoach
-              ticketId={ticket.id}
-              title={title}
-              description={description}
-              onOpenDcwf={() => setActiveTab('dcwf')}
-            />
+            <div className="space-y-4">
+              <TicketAiCoach
+                ticketId={ticket.id}
+                title={title}
+                description={description}
+                onOpenDcwf={() => setActiveTab('dcwf')}
+              />
+              <SavedTicketGuidance ticketId={ticket.id} />
+            </div>
           </TabsContent>
 
           <TabsContent value="dcwf" className="flex-1 overflow-auto p-1">

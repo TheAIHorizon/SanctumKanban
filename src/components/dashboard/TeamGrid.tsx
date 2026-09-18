@@ -204,6 +204,8 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
                 key={team.id}
                 team={team}
                 currentUser={readOnly ? { ...currentUser, role: 'OBSERVER' } : currentUser}
+                viewerRole={currentUser.role}
+                readOnly={readOnly}
                 isTeamLead={isTeamLead}
                 isMember={isMember}
               />
@@ -226,6 +228,8 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
               <TeamKanban
                 team={focusedTeam}
                 currentUser={readOnly ? { ...currentUser, role: 'OBSERVER' } : currentUser}
+                viewerRole={currentUser.role}
+                readOnly={readOnly}
                 isTeamLead={isTeamLead}
                 isMember={isMember}
               />

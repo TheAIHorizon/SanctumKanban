@@ -24,7 +24,7 @@ test('checkDatabase verifies connectivity and every required table column withou
   assert.equal(result.status, 'passed')
   assert.equal(result.connectivity, 'passed')
   assert.equal(result.schema, 'passed')
-  assert.equal(result.tablesChecked, 6)
+  assert.equal(result.tablesChecked, Object.keys(REQUIRED_SCHEMA).length)
   assert.equal(result.columnsChecked, rows.length)
   assert.equal(queries.length, 2)
   assert.match(queries[0], /^SELECT 1/)

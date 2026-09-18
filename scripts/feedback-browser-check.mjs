@@ -1,0 +1,94 @@
+// Browser checks on synthetic local fixtures; never use against student data.
+import assert from 'node:assert/strict'
+import { randomUUID, randomBytes, createHash } from 'node:crypto'
+import { mkdir } from 'node:fs/promises'
+import bcrypt from 'bcryptjs'
+import { PrismaClient } from '@prisma/client'
+const base = process.env.GA_BASE_URL
+const url = new URL(process.env.DATABASE_URL || 'file:///missing')
+assert.equal(base, 'http://127.0.0.1:3459'); assert.equal(url.hostname, '127.0.0.1'); assert.equal(url.port, '55439'); assert.equal(url.pathname, '/sanctum_ga_check')
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
+const prisma = new PrismaClient(); const browser = await chromium.launch({ headless: true })
+const users = []; let workspace; const errors = []; let passes = 0
+const suffix = randomUUID(); const password = randomBytes(24).toString('base64url'); const passwordHash = await bcrypt.hash(password, 10)
+const output = process.env.FEEDBACK_QA_OUTPUT || '/tmp/sanctum-feedback-check'; await mkdir(output, { recursive: true })
+function pass(name) { passes++; console.log('PASS ' + name) }
+async function login(user) {
+  const context = await browser.newContext({ baseURL: base, viewport: { width: 1440, height: 1000 } })
+  const csrf = await (await context.request.get('/api/auth/csrf')).json()
+  await context.request.post('/api/auth/callback/credentials', { form: { csrfToken: csrf.csrfToken, email: user.email, password, callbackUrl: base, json: 'true' } })
+  assert.equal((await (await context.request.get('/api/auth/session')).json()).user.id, user.id)
+  const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message))
+  return { page, context }
+}
+try {
+  for (const [firstName, role] of [['Instructor', 'ADMIN'], ['StudentLead', 'TEAM_LEAD'], ['Classmate', 'MEMBER']]) {
+    users.push(await prisma.user.create({ data: { firstName, lastName: 'QA', role, email: `${firstName}-${suffix}@example.invalid`, passwordHash } }))
+  }
+  workspace = await prisma.classWorkspace.create({ data: { name: `Feedback QA ${suffix}`, createdById: users[0].id, members: { create: users.map(u => ({ userId: u.id })) } } })
+  const team = await prisma.team.create({ data: { name: 'Feedback Test Team', classWorkspaceId: workspace.id, members: { create: { userId: users[1].id, role: 'LEAD' } } } })
+  const ticket = await prisma.ticket.create({ data: { title: 'Verify service configuration', description: 'Synthetic saved draft.', teamId: team.id, createdById: users[1].id, assigneeId: users[1].id } })
+  const hash = createHash('sha256').update(JSON.stringify({ title: ticket.title, description: ticket.description, model: 'laguna-s', promptVersion: 'dcwf-coach-v1' })).digest('hex')
+  await prisma.ticketAiGuidance.create({ data: { ticketId: ticket.id, inputHash: hash, mode: 'fallback:no_candidates', model: null, candidateCount: 0, guidance: { summary: 'Synthetic saved guidance: document the ping test.', feedback: [], abstained: true }, tasks: [], lastAttemptAt: new Date() } })
+  const admin = await login(users[0]); const student = await login(users[1]); const other = await login(users[2])
+  const address = '/?classId=' + workspace.id
+  await admin.page.goto(address)
+  await admin.page.getByRole('tab', { name: /^Feedback/ }).click()
+  await admin.page.getByLabel('Instructor feedback message').fill('Please add your test results before calling the work complete.')
+  await admin.page.getByLabel('Feedback category').selectOption('ACTION_REQUIRED')
+  await admin.page.getByLabel('Related team ticket').selectOption(ticket.id)
+  await admin.page.getByLabel('Pin this post').check()
+  await admin.page.getByRole('button', { name: 'Post', exact: true }).click()
+  await admin.page.getByText('Please add your test results before calling the work complete.', { exact: true }).waitFor()
+  await admin.page.getByRole('button', { name: 'Related ticket: Verify service configuration', exact: true }).click()
+  await admin.page.getByRole('heading', { name: 'Edit Ticket' }).waitFor()
+  await admin.page.keyboard.press('Escape')
+  pass('staff posts labeled pinned feedback and linked ticket opens the existing editor')
+  await student.page.goto(address)
+  await student.page.getByRole('tab', { name: /^Feedback/ }).click()
+  const feedback = student.page.getByRole('region', { name: 'Instructor feedback', exact: true })
+  assert.equal(await feedback.getByRole('heading', { name: 'Post instructor feedback' }).count(), 0)
+  await feedback.getByLabel('Reply to feedback from Instructor QA').fill('We will document the observed output.')
+  await feedback.getByRole('button', { name: 'Send reply to Instructor QA' }).click()
+  await feedback.getByText('We will document the observed output.', { exact: true }).waitFor()
+  await feedback.getByRole('button', { name: 'Acknowledge', exact: true }).click()
+  await feedback.getByText('StudentLead QA acknowledged', { exact: true }).waitFor()
+  await feedback.getByRole('button', { name: 'Mark all read', exact: true }).click()
+  await feedback.getByRole('button', { name: 'Mark all read', exact: true }).waitFor({ state: 'hidden' })
+  await student.page.screenshot({ path: output + '/team-feedback.png', fullPage: true })
+  pass('student lead can reply, acknowledge and clear unread status but cannot impersonate staff')
+  await other.page.goto(address)
+  assert.equal(await other.page.getByRole('tab', { name: /^Feedback/ }).count(), 0)
+  pass('classmate outside the team has no private feedback UI')
+  await student.page.getByRole('tab', { name: 'Kanban', exact: true }).click()
+  await student.page.getByRole('button', { name: 'Edit Verify service configuration', exact: true }).click()
+  await student.page.getByRole('tab', { name: 'AI Coach', exact: true }).click()
+  await student.page.getByRole('dialog').getByRole('button', { name: 'Load saved guidance', exact: true }).click()
+  await student.page.getByText('Synthetic saved guidance: document the ping test.', { exact: true }).waitFor()
+  await student.page.getByRole('dialog').getByText('Keyword fallback', { exact: true }).waitFor()
+  await student.page.screenshot({ path: output + '/saved-guidance.png' })
+  pass('saved guidance is readable, clearly labeled fallback, and separate from draft coaching')
+  await prisma.classWorkspace.update({ where: { id: workspace.id }, data: { nightlyReviewLastSummary: { attempted: 2, savedAi: 1 }, nightlyReviewLastRunAt: new Date() } })
+  await admin.page.goto('/admin/classes')
+  const settings = admin.page.locator(`section[data-class-id="${workspace.id}"]`)
+  await settings.getByLabel('Enable automatic nightly review').check()
+  await settings.getByRole('button', { name: 'Save settings', exact: true }).click()
+  await settings.getByRole('button', { name: 'Queue review now', exact: true }).click()
+  await settings.getByText(/Queued request recorded/).waitFor()
+  await admin.page.screenshot({ path: output + '/nightly-settings.png', fullPage: true })
+  pass('admin can opt in and queue a review; structured runner summary renders without crashing')
+  await prisma.classWorkspace.update({ where: { id: workspace.id }, data: { archivedAt: new Date() } })
+  await admin.page.goto(address + '&archived=1')
+  await admin.page.getByRole('tab', { name: /^Feedback/ }).click()
+  await admin.page.getByText('Please add your test results before calling the work complete.', { exact: true }).waitFor()
+  assert.equal(await admin.page.getByRole('heading', { name: 'Post instructor feedback' }).count(), 0)
+  assert.equal(await admin.page.getByRole('button', { name: 'Acknowledge', exact: true }).count(), 0)
+  assert.deepEqual(errors, [])
+  pass('archived feedback remains readable without write controls and no browser exceptions')
+  console.log('PASS total ' + passes)
+} finally {
+  await browser.close()
+  if (workspace) await prisma.classWorkspace.deleteMany({ where: { id: workspace.id } })
+  await prisma.user.deleteMany({ where: { id: { in: users.map(u => u.id) } } })
+  await prisma.$disconnect()
+}

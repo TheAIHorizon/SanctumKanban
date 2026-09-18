@@ -5,11 +5,8 @@ import { chat } from '@/lib/ai'
 import { authOptions } from '@/lib/auth'
 import {
   authorizeDcwfSuggestion,
-  buildCoachMessages,
-  buildFallbackAdvice,
-  parseGroundedAdvice,
+  generateAdvice,
   rankDcwfTasks,
-  type DcwfAdvice,
   type DcwfCandidate,
 } from '@/lib/dcwf-suggest'
 import { prisma } from '@/lib/prisma'
@@ -156,36 +153,16 @@ export async function POST(request: Request) {
     }))
     const candidates = rankDcwfTasks(text, importedTasks, 20)
 
-    let advice: DcwfAdvice = buildFallbackAdvice(text, candidates)
-    let fallbackReason: string | null = candidates.length ? 'invalid_response' : 'no_candidates'
-    if (candidates.length > 0) {
-      try {
-        const raw = await chat(buildCoachMessages(text, candidates), {
-          model: coachModel,
-          json: true,
-          temperature: 0.1,
-          maxTokens: 1800,
-          timeoutMs: 45_000,
-        })
-        const validated = parseGroundedAdvice(text, candidates, raw)
-        if (validated) {
-          advice = validated
-          fallbackReason = null
-        }
-      } catch {
-        fallbackReason = 'request_failed'
-        // Local model unavailable or timed out. The grounded deterministic response remains useful.
-      }
-    }
+    const generated = await generateAdvice(text, candidates, chat, coachModel)
 
     return NextResponse.json({
-      guidance: advice.guidance,
-      tasks: advice.tasks,
-      usedAi: advice.usedAi,
+      guidance: generated.advice.guidance,
+      tasks: generated.advice.tasks,
+      usedAi: generated.advice.usedAi,
       candidateCount: candidates.length,
-      mode: advice.mode,
-      fallbackReason,
-      model: advice.usedAi ? coachModel : null,
+      mode: generated.advice.mode,
+      fallbackReason: generated.fallbackReason,
+      model: generated.model,
     })
   } catch {
     // Deliberately do not log prompts, student text, credentials, or model payloads.

@@ -23,6 +23,7 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 
 - [User manual (offline HTML)](docs/user-manual.html)
 - [AI Coach and grounded DCWF guidance](docs/ai-coach.html)
+- [Private instructor feedback and saved nightly AI reviews](docs/feedback-and-nightly-review.html)
 - [Live student-site operations and incident/rollback procedures](OPERATIONS.md)
 - [Gantt guide and safe future NAS rollout](docs/gantt-guide.html)
 - [Automatic completion tracking and planned/actual comparison](docs/completion-tracking.html)

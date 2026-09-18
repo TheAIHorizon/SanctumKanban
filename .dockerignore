@@ -33,3 +33,8 @@ docker-compose*
 *.md
 !README.md
 .DS_Store
+
+# Private operations inventory, agent workspace and database backups
+.ops/
+.hermes/
+*.dump

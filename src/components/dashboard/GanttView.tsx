@@ -28,6 +28,8 @@ import { getGanttCompletion, layoutGanttCompletion } from '@/lib/gantt-completio
 import { getGanttStart, layoutGanttStart } from '@/lib/gantt-start'
 import { useLocalToday } from '@/hooks/useLocalToday'
 import { cn, getContrastColor } from '@/lib/utils'
+import { SavedTicketGuidance } from '@/components/kanban/SavedTicketGuidance'
+import { canReadSavedGuidance } from '@/lib/saved-ticket-guidance'
 
 export interface GanttUser {
   id: string
@@ -118,12 +120,14 @@ function TicketDetailsDialog({
   ticket,
   teamName,
   today,
+  canViewGuidance,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   ticket: GanttTicket
   teamName: string
   today: Date
+  canViewGuidance: boolean
 }) {
   const completion = getGanttCompletion(ticket, today)
   const start = getGanttStart(ticket)
@@ -182,6 +186,7 @@ function TicketDetailsDialog({
             </div>
           )}
         </dl>
+        {canViewGuidance && <SavedTicketGuidance ticketId={ticket.id} />}
       </DialogContent>
     </Dialog>
   )
@@ -562,7 +567,14 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
           }}
         />
       ) : selected ? (
-        <TicketDetailsDialog open onOpenChange={open => { if (!open) closeTicket() }} ticket={selected.ticket} teamName={selected.team.name} today={today} />
+        <TicketDetailsDialog
+          open
+          onOpenChange={open => { if (!open) closeTicket() }}
+          ticket={selected.ticket}
+          teamName={selected.team.name}
+          today={today}
+          canViewGuidance={canReadSavedGuidance(currentUser.role, selected.team.members.some(member => member.userId === currentUser.id))}
+        />
       ) : null}
     </section>
   )

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ClassResourceEditor } from '@/components/resources/ClassResourceEditor'
+import { NightlyReviewSettings } from '@/components/admin/NightlyReviewSettings'
 
 interface Workspace {
   id: string
@@ -118,6 +119,7 @@ export default function ClassesPage() {
           )}
         </div>
         {resourceClassId === workspace.id && <ClassResourceEditor key={workspace.id} classId={workspace.id} />}
+        <NightlyReviewSettings key={`nightly:${workspace.id}`} classId={workspace.id} isArchived={isArchived} />
       </CardContent>
     </Card>
   )

@@ -77,6 +77,7 @@ export interface KanbanBoardProps {
   tags?: Tag[]
   currentUser: CurrentUser
   isTeamLead: boolean
+  canViewGuidance?: boolean
   compactView?: boolean
   hideColumns?: HideColumns
   onTicketUpdated: (ticket: Ticket) => void
@@ -104,6 +105,7 @@ export function KanbanBoard({
   tags = [],
   currentUser,
   isTeamLead,
+  canViewGuidance = false,
   compactView = true,
   hideColumns = defaultHideColumns,
   onTicketUpdated,
@@ -269,6 +271,7 @@ export function KanbanBoard({
             tags={tags}
             currentUser={currentUser}
             isTeamLead={isTeamLead}
+            canViewGuidance={canViewGuidance}
             compactView={compactView}
             onTicketUpdated={onTicketUpdated}
             onTicketDeleted={onTicketDeleted}
@@ -284,6 +287,7 @@ export function KanbanBoard({
             tags={tags}
             currentUser={currentUser}
             isTeamLead={isTeamLead}
+            canViewGuidance={canViewGuidance}
             compactView={compactView}
             onTicketUpdated={onTicketUpdated}
             onTicketDeleted={onTicketDeleted}

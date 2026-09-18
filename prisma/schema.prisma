@@ -30,6 +30,12 @@ enum TicketStatus {
   DONE
 }
 
+enum InstructorFeedbackCategory {
+  GUIDANCE
+  NEEDS_ATTENTION
+  ACTION_REQUIRED
+}
+
 // User model
 model User {
   id           String   @id @default(cuid())
@@ -53,8 +59,12 @@ model User {
   cohortsCreated   Cohort[]               @relation("CohortCreatedBy")
   ticketHistory    TicketHistory[]
   announcements    Announcement[]
-  comments         Comment[]
-  dcwfTaskLinks    TicketDcwfTask[]
+  comments                 Comment[]
+  dcwfTaskLinks            TicketDcwfTask[]
+  instructorFeedback       InstructorFeedback[]               @relation("InstructorFeedbackAuthor")
+  instructorFeedbackReplies InstructorFeedbackReply[]         @relation("InstructorFeedbackReplyAuthor")
+  feedbackAcknowledgments  InstructorFeedbackAcknowledgment[]
+  teamFeedbackReads        TeamFeedbackRead[]
 
   // NextAuth
   accounts Account[]
@@ -70,8 +80,16 @@ model ClassWorkspace {
   code        String?
   term        String?
   description String?
-  archivedAt  DateTime?
-  createdById String
+  archivedAt               DateTime?
+  nightlyReviewEnabled     Boolean   @default(false)
+  nightlyReviewHour        Int       @default(2)
+  nightlyReviewTimezone    String    @default("America/Los_Angeles")
+  nightlyReviewRequestedAt DateTime?
+  nightlyReviewLastRunAt   DateTime?
+  nightlyReviewLastRunDate String?
+  nightlyReviewLastError   String?
+  nightlyReviewLastSummary Json?
+  createdById              String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -114,6 +132,8 @@ model Team {
   reflections    Reflection[]
   tags           Tag[]
   note           TeamNote?
+  instructorFeedback InstructorFeedback[]
+  feedbackReads      TeamFeedbackRead[]
 
   @@index([classWorkspaceId])
 }
@@ -159,6 +179,73 @@ model TeamNote {
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
+model InstructorFeedback {
+  id         String                     @id @default(cuid())
+  teamId     String
+  ticketId   String?
+  authorId   String?
+  authorName String
+  body       String                     @db.Text
+  category   InstructorFeedbackCategory
+  pinned     Boolean                    @default(false)
+  createdAt  DateTime                   @default(now())
+
+  team            Team                               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  ticket          Ticket?                            @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  author          User?                              @relation("InstructorFeedbackAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  replies         InstructorFeedbackReply[]
+  acknowledgments InstructorFeedbackAcknowledgment[]
+
+  @@index([teamId, createdAt])
+  @@index([teamId, pinned, createdAt])
+  @@index([ticketId])
+  @@index([authorId])
+}
+
+model InstructorFeedbackReply {
+  id         String   @id @default(cuid())
+  feedbackId String
+  authorId   String?
+  authorName String
+  body       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  feedback InstructorFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  author   User?              @relation("InstructorFeedbackReplyAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([feedbackId, createdAt])
+  @@index([authorId])
+}
+
+model InstructorFeedbackAcknowledgment {
+  id         String   @id @default(cuid())
+  feedbackId String
+  userId     String
+  userName   String
+  createdAt  DateTime @default(now())
+
+  feedback InstructorFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, userId])
+  @@index([userId])
+}
+
+model TeamFeedbackRead {
+  id          String   @id @default(cuid())
+  teamId      String
+  userId      String
+  readThrough DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
 // Ticket model
 model Ticket {
   id           String       @id @default(cuid())
@@ -188,8 +275,10 @@ model Ticket {
   history     TicketHistory[]
   tags        TicketTag[]
   comments    Comment[]
-  dcwfTasks   TicketDcwfTask[]
-  reflections Reflection[]
+  dcwfTasks         TicketDcwfTask[]
+  reflections       Reflection[]
+  instructorFeedback InstructorFeedback[]
+  aiGuidanceReviews TicketAiGuidance[]
 }
 
 // Tag model for labeling tickets
@@ -507,4 +596,32 @@ model ProposedMember {
 
   @@index([proposedTeamId])
   @@index([responseId])
+}
+
+model TicketAiGuidance {
+  id             String   @id @default(cuid())
+  ticketId       String
+  inputHash      String
+  model          String?
+  mode           String
+  guidance       Json
+  tasks          Json
+  candidateCount Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastAttemptAt  DateTime
+  nextRetryAt    DateTime?
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, inputHash])
+  @@index([nextRetryAt])
+}
+
+model NightlyReviewLease {
+  id        String   @id
+  owner     String
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }

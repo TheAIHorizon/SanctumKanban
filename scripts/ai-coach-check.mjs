@@ -65,11 +65,23 @@ try {
   await page.getByRole('button', { name: 'Edit Synthetic Ubuntu installation', exact: true }).click()
   await page.getByRole('tab', { name: 'AI Coach', exact: true }).click()
   assert.equal(sent, 0, 'Opening the coach must not automatically transmit ticket text')
-  const responsePromise = page.waitForResponse(r => r.url().endsWith('/api/dcwf/suggest') && r.request().method() === 'POST', { timeout: 60000 })
-  await page.getByRole('button', { name: 'Ask AI Coach about this ticket draft' }).click()
-  const response = await responsePromise
+  async function askThroughUi() {
+    const pending = page.waitForResponse(r => r.url().endsWith('/api/dcwf/suggest') && r.request().method() === 'POST', { timeout: 60000 })
+    await page.getByRole('button', { name: 'Ask AI Coach about this ticket draft' }).click()
+    return pending
+  }
+  let response = await askThroughUi()
   assert.equal(response.status(), 200)
-  const data = await response.json()
+  let data = await response.json()
+  if (!data.usedAi && ['invalid_response', 'request_failed'].includes(data.fallbackReason)) {
+    assert.equal(data.mode, 'fallback')
+    await verifySources(data)
+    console.log('Observed safely labeled model fallback; testing one explicit retry.')
+    await new Promise(resolve => setTimeout(resolve, 3100)) // Respect the per-user cooldown.
+    response = await askThroughUi()
+    assert.equal(response.status(), 200)
+    data = await response.json()
+  }
   assert.equal(data.usedAi, true, `Real Laguna S response required; fallback reason: ${data.fallbackReason || 'unspecified'}`)
   assert.equal(data.model, 'laguna-s'); assert.equal(data.mode, 'ai')
   assert.ok(data.guidance.feedback.some(f => ['testing', 'verification'].includes(f.category)), 'Vague installation should prompt for testing/verification evidence')

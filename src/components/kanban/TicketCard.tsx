@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { EditTicketDialog } from './EditTicketDialog'
 import { WorkflowBadges } from './WorkflowBadges'
+import { SavedTicketGuidance } from './SavedTicketGuidance'
 import { cn } from '@/lib/utils'
 import { can, type Role } from '@/lib/permissions'
 import { Pencil, Trash2, GripVertical, ChevronDown, ChevronUp, Calendar, MessageCircle } from 'lucide-react'
@@ -63,6 +64,7 @@ interface TicketCardProps {
   tags?: Tag[]
   currentUser: CurrentUser
   isTeamLead: boolean
+  canViewGuidance?: boolean
   compactView?: boolean
   onTicketUpdated: (ticket: Ticket) => void
   onTicketDeleted: (ticketId: string) => void
@@ -97,6 +99,7 @@ export function TicketCard({
   tags,
   currentUser,
   isTeamLead,
+  canViewGuidance = false,
   compactView = true,
   onTicketUpdated,
   onTicketDeleted,
@@ -387,6 +390,11 @@ export function TicketCard({
                     : 'Unassigned'
                   }
                 </p>
+                {showExpanded && canViewGuidance && (
+                  <div className="mt-3" onClick={event => event.stopPropagation()}>
+                    <SavedTicketGuidance ticketId={ticket.id} compact />
+                  </div>
+                )}
               </>
             )}
           </div>

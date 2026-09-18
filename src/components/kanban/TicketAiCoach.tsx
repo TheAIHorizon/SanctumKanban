@@ -151,8 +151,8 @@ export function TicketAiCoach({ ticketId, title, description, onOpenDcwf }: Tick
           <h3 id="ai-coach-heading" className="text-sm font-semibold">AI Coach</h3>
         </div>
         <p className="text-xs text-muted-foreground">
-          This ticket&apos;s current title and description, plus retrieved DCWF reference excerpts, are sent to your user-owned CoyoteGPT only after you choose Ask AI Coach.
-          Separate student profiles and comments are not loaded. Do not put passwords or unnecessary personal information in the draft.
+          This button sends the current ticket draft and retrieved DCWF reference excerpts to your user-owned CoyoteGPT only when you click Ask AI Coach.
+          If your instructor enables nightly review, saved tickets may also be reviewed automatically; see Saved guidance. Separate student profiles and comments are not loaded. Do not put passwords or unnecessary personal information in the draft.
         </p>
         <p className="text-xs text-muted-foreground">
           This feedback is advisory, not a grade. Missing evidence does not mean the work was not done;

@@ -141,7 +141,7 @@ const modelSchema = z.object({
   guidance: z.object({
     summary: z.string().trim().min(1).max(800),
     feedback: z.array(feedbackSchema).max(7),
-    abstained: z.boolean(),
+    abstained: z.boolean().optional(),
   }),
   tasks: z.array(z.object({
     id: z.string().min(1),
@@ -185,7 +185,8 @@ export function parseGroundedAdvice(ticketText: string, candidates: readonly Dcw
     if (tasks.length === 5) break
   }
 
-  if (!result.data.guidance.abstained && tasks.length === 0) return null
+  const abstained = result.data.guidance.abstained ?? (result.data.tasks.length === 0)
+  if (!abstained && tasks.length === 0) return null
   const feedback = result.data.guidance.feedback.map(({ evidenceQuote, ...item }) => ({
     ...item,
     ...(evidenceQuote && ticketText.includes(evidenceQuote) ? { evidenceQuote } : {}),
@@ -195,9 +196,9 @@ export function parseGroundedAdvice(ticketText: string, candidates: readonly Dcw
     guidance: {
       summary: result.data.guidance.summary,
       feedback,
-      abstained: result.data.guidance.abstained,
+      abstained,
     },
-    tasks: result.data.guidance.abstained ? [] : tasks,
+    tasks: abstained ? [] : tasks,
     usedAi: true,
     mode: 'ai',
   }
@@ -264,6 +265,40 @@ export function buildCoachMessages(ticketText: string, candidates: readonly Dcwf
       }),
     },
   ]
+}
+
+export type AdviceFallbackReason = 'no_candidates' | 'request_failed' | 'invalid_response'
+export type AdviceChat = (
+  messages: ReturnType<typeof buildCoachMessages>,
+  options: { model: string; json: true; temperature: number; maxTokens: number; timeoutMs: number }
+) => Promise<string>
+
+/** Shared inference seam used by both on-demand and saved nightly coaching. */
+export async function generateAdvice(
+  ticketText: string,
+  candidates: readonly DcwfCandidate[],
+  chatClient: AdviceChat,
+  model = 'laguna-s'
+): Promise<{ advice: DcwfAdvice; fallbackReason: AdviceFallbackReason | null; model: string | null }> {
+  const fallback = buildFallbackAdvice(ticketText, candidates)
+  if (candidates.length === 0) {
+    return { advice: fallback, fallbackReason: 'no_candidates', model: null }
+  }
+  try {
+    const raw = await chatClient(buildCoachMessages(ticketText, candidates), {
+      model,
+      json: true,
+      temperature: 0.1,
+      maxTokens: 1800,
+      timeoutMs: 45_000,
+    })
+    const advice = parseGroundedAdvice(ticketText, candidates, raw)
+    return advice
+      ? { advice, fallbackReason: null, model }
+      : { advice: fallback, fallbackReason: 'invalid_response', model: null }
+  } catch {
+    return { advice: fallback, fallbackReason: 'request_failed', model: null }
+  }
 }
 
 export interface SuggestionTicketContext {

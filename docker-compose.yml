@@ -18,6 +18,7 @@ services:
       retries: 5
 
   app:
+    image: ${KANBAN_IMAGE:-sanctumkanban-app:latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -26,7 +27,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    environment:
+    environment: &app-environment
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-sanctum_kanban}?schema=public
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3456}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
@@ -39,6 +40,23 @@ services:
       AI_API_KEY: ${AI_API_KEY:-}
     ports:
       - "3456:3456"
+
+  # Explicitly opt in after approving the schema/update and enabling classes.
+  # This worker has no published ports and never runs schema synchronization.
+  reviewer:
+    image: ${KANBAN_IMAGE:-sanctumkanban-app:latest}
+    profiles: ["nightly"]
+    restart: unless-stopped
+    entrypoint: []
+    command: ["npm", "run", "review:nightly", "--", "--daemon"]
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    environment:
+      <<: *app-environment
+      NIGHTLY_REVIEW_RUNNER: "1"
 
 volumes:
   postgres_data:

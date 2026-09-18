@@ -7,16 +7,22 @@ export const REQUIRED_SCHEMA = Object.freeze({
   User: ['id', 'email', 'firstName', 'lastName', 'contactInfo', 'color', 'role', 'passwordHash', 'createdAt', 'updatedAt'],
   Team: ['id', 'name', 'description', 'classWorkspaceId', 'createdAt', 'updatedAt'],
   Ticket: ['id', 'title', 'description', 'status', 'position', 'startDate', 'startedAt', 'startDateAutoFilled', 'dueDate', 'completedAt', 'teamId', 'assigneeId', 'createdById', 'archived', 'archivedAt', 'archivedById', 'createdAt', 'updatedAt'],
-  ClassWorkspace: ['id', 'name', 'code', 'term', 'description', 'archivedAt', 'createdById', 'createdAt', 'updatedAt'],
+  ClassWorkspace: ['id', 'name', 'code', 'term', 'description', 'archivedAt', 'createdById', 'createdAt', 'updatedAt', 'nightlyReviewEnabled', 'nightlyReviewHour', 'nightlyReviewTimezone', 'nightlyReviewRequestedAt', 'nightlyReviewLastRunAt', 'nightlyReviewLastRunDate', 'nightlyReviewLastError', 'nightlyReviewLastSummary'],
   ClassResource: ['id', 'classWorkspaceId', 'key', 'url', 'createdAt', 'updatedAt'],
   TeamNote: ['id', 'teamId', 'content', 'revision', 'createdAt', 'updatedAt'],
+  InstructorFeedback: ['id', 'teamId', 'ticketId', 'authorId', 'authorName', 'body', 'category', 'pinned', 'createdAt'],
+  InstructorFeedbackReply: ['id', 'feedbackId', 'authorId', 'authorName', 'body', 'createdAt'],
+  InstructorFeedbackAcknowledgment: ['id', 'feedbackId', 'userId', 'userName', 'createdAt'],
+  TeamFeedbackRead: ['id', 'teamId', 'userId', 'readThrough', 'createdAt', 'updatedAt'],
+  TicketAiGuidance: ['id', 'ticketId', 'inputHash', 'model', 'mode', 'guidance', 'tasks', 'candidateCount', 'createdAt', 'updatedAt', 'lastAttemptAt', 'nextRetryAt'],
+  NightlyReviewLease: ['id', 'owner', 'expiresAt'],
 })
 
 const SCHEMA_QUERY = `
 SELECT table_name, column_name
 FROM information_schema.columns
 WHERE table_schema = current_schema()
-  AND table_name IN ('User', 'Team', 'Ticket', 'ClassWorkspace', 'ClassResource', 'TeamNote')
+  AND table_name IN ('User', 'Team', 'Ticket', 'ClassWorkspace', 'ClassResource', 'TeamNote', 'InstructorFeedback', 'InstructorFeedbackReply', 'InstructorFeedbackAcknowledgment', 'TeamFeedbackRead', 'TicketAiGuidance', 'NightlyReviewLease')
 ORDER BY table_name, ordinal_position
 `
 

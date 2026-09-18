@@ -54,6 +54,7 @@ interface KanbanColumnProps {
   tags?: Tag[]
   currentUser: CurrentUser
   isTeamLead: boolean
+  canViewGuidance?: boolean
   compactView?: boolean
   onTicketUpdated: (ticket: Ticket) => void
   onTicketDeleted: (ticketId: string) => void
@@ -68,6 +69,7 @@ export function KanbanColumn({
   tags = [],
   currentUser,
   isTeamLead,
+  canViewGuidance = false,
   compactView = true,
   onTicketUpdated,
   onTicketDeleted,
@@ -105,6 +107,7 @@ export function KanbanColumn({
               tags={tags}
               currentUser={currentUser}
               isTeamLead={isTeamLead}
+              canViewGuidance={canViewGuidance}
               compactView={compactView}
               onTicketUpdated={onTicketUpdated}
               onTicketDeleted={onTicketDeleted}

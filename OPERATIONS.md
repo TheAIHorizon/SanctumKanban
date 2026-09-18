@@ -66,6 +66,10 @@ The private inventory records the exact public URL and port, NAS LAN address, no
 10. Verify at least one external-network path and the user's relevant internal path. A phone on cellular and a laptop on LAN may take different routes. State any untested path or remaining blocker explicitly.
 11. Keep backups and the old image. Remove only rehearsal fixtures/databases that this deployment created, after verification. Close privileged sessions when finished.
 
+## Optional nightly reviewer
+
+The `nightly` Compose profile adds a separate worker using the same approved app image, with no published ports and no schema-sync entrypoint. It is not enabled by a source push. Start it only after an approved schema/app deployment, then explicitly enable the intended classes. The default class setting is off; the proposed time is 02:00 America/Los_Angeles. `Queue review now` is a persisted request, not proof a worker ran. Inspect last-run/error metadata and actual saved guidance. See [the operator/user guide](docs/feedback-and-nightly-review.html). Stop the worker before a live migration or backup/write pause so its database writes do not invalidate the preservation baseline; resume only after verification. Never run fixture test scripts against student data.
+
 ## Recovery / rollback
 
 Stop changing variables once a failure appears. Identify whether it is the app, database, TLS, routing, or browser path.

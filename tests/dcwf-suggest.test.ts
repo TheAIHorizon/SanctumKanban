@@ -6,6 +6,7 @@ import {
   authorizeDcwfSuggestion,
   buildCoachMessages,
   buildFallbackAdvice,
+  generateAdvice,
   parseGroundedAdvice,
   rankDcwfTasks,
   type DcwfCandidate,
@@ -59,6 +60,16 @@ test('retrieval abstains instead of filling from unrelated tasks', () => {
   const fallback = buildFallbackAdvice('Designed a poster for the team picnic.', [])
   assert.equal(fallback.guidance.abstained, true)
   assert.deepEqual(fallback.tasks, [])
+})
+
+test('an omitted abstention flag can be derived only from an explicitly empty task list', () => {
+  const guidance = { summary: 'Document the verification result.', feedback: [{ category: 'testing', message: 'The draft does not state a test.', question: 'What test was run?' }] }
+  const parsed = parseGroundedAdvice('Installed Ubuntu Server.', corpus, JSON.stringify({ guidance, tasks: [] }))
+  assert.ok(parsed)
+  assert.equal(parsed.usedAi, true)
+  assert.equal(parsed.guidance.abstained, true)
+  assert.deepEqual(parsed.tasks, [])
+  assert.equal(parseGroundedAdvice('Installed Ubuntu Server.', corpus, JSON.stringify({ guidance, tasks: [{ id: 'invented' }] })), null)
 })
 
 test('grounded AI output preserves canonical database fields and rejects unknown or duplicate ids', () => {
@@ -124,6 +135,26 @@ test('ticket text is delimited as untrusted data and cannot expand eligible task
   const payload = JSON.parse(messages[1].content)
   assert.equal(payload.ticketText, injection)
   assert.deepEqual(payload.eligibleTasks.map((candidate: { id: string }) => candidate.id), ['task-dns'])
+})
+
+test('shared advice generator uses the injected client and labels fallback reasons', async () => {
+  let calls = 0
+  const ai = await generateAdvice('Configured DNS and tested name resolution.', [corpus[1]], async () => {
+    calls += 1
+    return JSON.stringify({
+      guidance: { summary: 'Add the observed result.', feedback: [], abstained: false },
+      tasks: [{ id: 'task-dns', rationale: 'DNS work is documented.' }],
+    })
+  })
+  assert.equal(calls, 1)
+  assert.equal(ai.advice.mode, 'ai')
+  assert.equal(ai.fallbackReason, null)
+
+  const failed = await generateAdvice('Configured DNS.', [corpus[1]], async () => { throw new Error('offline') })
+  assert.equal(failed.advice.mode, 'fallback')
+  assert.equal(failed.fallbackReason, 'request_failed')
+  const empty = await generateAdvice('Picnic poster.', [], async () => { throw new Error('must not be called') })
+  assert.equal(empty.fallbackReason, 'no_candidates')
 })
 
 test('authorization contract requires ticket:update on an active own-team ticket', () => {

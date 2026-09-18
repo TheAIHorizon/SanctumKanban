@@ -57,6 +57,9 @@ COPY --from=builder /app/prisma ./prisma
 # fetched during `npm ci` in the builder stage).
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src/lib ./src/lib
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Copy the entrypoint (syncs schema via `prisma db push`, then starts server)
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh

@@ -893,6 +893,59 @@ async function main(): Promise<void> {
         .map(({ id }) => id)
     })
 
+    let feedbackId = ''
+    await check('private instructor feedback preserves staff posts with replies, acknowledgments and unread state', async () => {
+      const path = `/api/teams/${memberTeam.id}/feedback`
+      const body = `Please document testing and verification ${suffix}`
+      const posted = await request(adminJar, path, { method: 'POST', json: { body, category: 'ACTION_REQUIRED', ticketId: firstTicketId, pinned: true } })
+      assert.ok([200, 201].includes(posted.status), 'Admin feedback create must succeed')
+      const feed = await request(memberJar, path)
+      expectStatus(feed, 200, 'member reads own feedback')
+      const post = feed.data.posts.find((item: any) => item.body === body)
+      assert.ok(post); feedbackId = post.id
+      assert.equal(post.category, 'ACTION_REQUIRED'); assert.equal(post.pinned, true)
+      assert.equal(post.ticket.id, firstTicketId); assert.equal(post.isUnread, true)
+      expectStatus(await request(otherJar, path), 403, 'other team cannot read feedback')
+      expectStatus(await request(observerJar, path), 403, 'observer cannot read feedback')
+      expectStatus(await request(memberJar, path, { method: 'POST', json: { body: 'Student cannot impersonate instructor', category: 'GUIDANCE' } }), 403, 'student cannot post instructor feedback')
+      const reply = await request(memberJar, `${path}/${feedbackId}/replies`, { method: 'POST', json: { body: 'We will add the verification results.' } })
+      assert.ok([200, 201].includes(reply.status))
+      for (let repeat = 0; repeat < 2; repeat++) {
+        const ack = await request(memberJar, `${path}/${feedbackId}/acknowledge`, { method: 'POST', json: {} })
+        assert.ok([200, 201].includes(ack.status))
+      }
+      const seen = await request(memberJar, `${path}/read`, { method: 'POST', json: { throughId: feedbackId } })
+      expectStatus(seen, 200, 'mark feedback read')
+      const refreshed = await request(memberJar, path)
+      const unchanged = refreshed.data.posts.find((item: any) => item.id === feedbackId)
+      assert.equal(unchanged.body, body)
+      assert.equal(unchanged.replies.length, 1)
+      assert.equal(unchanged.acknowledgments.filter((a: any) => a.userId === member.id).length, 1)
+      assert.equal(unchanged.acknowledgedByMe, true)
+      assert.equal(unchanged.isUnread, false)
+      expectStatus(await request(memberJar, `${path}/${feedbackId}`, { method: 'PATCH', json: { pinned: false } }), 403, 'member cannot modify instructor pin')
+      await prisma.user.update({ where: { id: member.id }, data: { role: 'TEAM_LEAD' } })
+      expectStatus(await request(memberJar, path, { method: 'POST', json: { body: 'Student lead is not instructional staff', category: 'GUIDANCE' } }), 403, 'student lead cannot post as staff')
+      await prisma.user.update({ where: { id: member.id }, data: { role: 'MEMBER' } })
+    })
+
+    await check('nightly settings are admin-only, opt-in and queue review requests', async () => {
+      const path = `/api/classes/${workspace.id}/nightly-review`
+      const initial = await request(adminJar, path)
+      expectStatus(initial, 200, 'admin reads nightly settings')
+      assert.equal(initial.data.nightlyReviewEnabled, false)
+      expectStatus(await request(memberJar, path), 403, 'member cannot read admin scheduler settings')
+      expectStatus(await request(memberJar, path, { method: 'PATCH', json: { enabled: true, hour: 2, timeZone: 'America/Los_Angeles' } }), 403, 'member cannot enable automatic inference')
+      const enabled = await request(adminJar, path, { method: 'PATCH', json: { enabled: true, hour: 2, timeZone: 'America/Los_Angeles' } })
+      expectStatus(enabled, 200, 'enable local fixture reviews')
+      const queued = await request(adminJar, `${path}/run`, { method: 'POST', json: {} })
+      assert.ok([200, 202].includes(queued.status))
+      const guidancePath = `/api/tickets/${firstTicketId}/guidance`
+      expectStatus(await request(memberJar, guidancePath), 200, 'member reads saved guidance')
+      expectStatus(await request(otherJar, guidancePath), 403, 'other team cannot read saved guidance')
+      expectStatus(await request(observerJar, guidancePath), 403, 'observer cannot read saved guidance')
+    })
+
     await check('archived class blocks ticket resource note and deliverable writes', async () => {
       const archive = await request(adminJar, `/api/classes/${workspace.id}`, {
         method: 'PATCH',
@@ -901,6 +954,10 @@ async function main(): Promise<void> {
       expectStatus(archive, 200, 'class archive')
       const archived = await prisma.classWorkspace.findUniqueOrThrow({ where: { id: workspace.id } })
       assert.ok(archived.archivedAt)
+      expectStatus(await request(adminJar, `/api/teams/${memberTeam.id}/feedback`, { method: 'POST', json: { body: 'Archived feedback blocked', category: 'GUIDANCE' } }), 409, 'archived instructor posting')
+      expectStatus(await request(memberJar, `/api/teams/${memberTeam.id}/feedback/${feedbackId}/replies`, { method: 'POST', json: { body: 'Archived reply blocked' } }), 409, 'archived feedback reply')
+      expectStatus(await request(adminJar, `/api/classes/${workspace.id}/nightly-review/run`, { method: 'POST', json: {} }), 409, 'archived nightly request')
+      expectStatus(await request(memberJar, `/api/teams/${memberTeam.id}/feedback`), 200, 'archived private feedback remains readable')
 
       const ticketBefore = await prisma.ticket.findUniqueOrThrow({ where: { id: secondTicketId } })
       const noteBefore = await prisma.teamNote.findUniqueOrThrow({ where: { teamId: memberTeam.id } })
