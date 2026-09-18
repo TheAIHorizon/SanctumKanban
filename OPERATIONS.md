@@ -2,6 +2,8 @@
 
 **This application is used by students. Their work is not disposable.**
 
+For codebase orientation and continuation/testing instructions, read [CONTINUATION.md](CONTINUATION.md). In-app Help is a curated user-facing catalogue, not a publication of this operational runbook or the private inventory.
+
 Before code, configuration, database, networking, or deployment work, read this file and the private inventory at `.ops/site.local.json`. If the inventory is missing, obtain the real target from the owner; do not guess. The inventory is intentionally gitignored because this repository is public. It contains no passwords. Keep a protected copy outside this checkout.
 
 ## Three different outcomes

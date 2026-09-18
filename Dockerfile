@@ -57,7 +57,8 @@ COPY --from=builder /app/prisma ./prisma
 # fetched during `npm ci` in the builder stage).
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/scripts/database-check.mjs ./scripts/database-check.mjs
+COPY --from=builder /app/scripts/nightly-ticket-review.ts ./scripts/nightly-ticket-review.ts
 COPY --from=builder /app/src/lib ./src/lib
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 

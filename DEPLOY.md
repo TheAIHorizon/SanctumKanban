@@ -1,5 +1,7 @@
 # Fresh installation of Sanctum Kanban (disposable/demo environment)
 
+Maintainers continuing existing work should start with [CONTINUATION.md](CONTINUATION.md). The in-app `/help` pages contain approved role-aware user guides; operational runbooks and `.ops` files are deliberately not served there.
+
 > **Existing student site? STOP and read [OPERATIONS.md](OPERATIONS.md) first.** The live NAS has student data and private deployment configuration. Do not run this seed-based quick start against it. In-place upgrades require a protected backup, restored-copy rehearsal, explicit outage approval, preserved volume/configuration, and acceptance through the exact public URL. The actual NAS source directory may not be a Git checkout.
 
 This is a self-contained runbook to deploy Sanctum Kanban with Docker and

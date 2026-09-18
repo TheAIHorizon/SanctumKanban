@@ -9,6 +9,7 @@ out
 # Production
 build
 dist
+docs/
 
 # Local env files
 .env

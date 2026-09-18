@@ -1,5 +1,7 @@
 # Sanctum Kanban
 
+**New agent or maintainer? Start with [CONTINUATION.md](CONTINUATION.md), then [OPERATIONS.md](OPERATIONS.md).** These cover architecture, feature invariants, local tests, private operational inventory, and safe live-site updates.
+
 > **LIVE SITE OPERATORS:** Read [OPERATIONS.md](OPERATIONS.md) before making changes. This installation is used by students. Preserve its database and verify the exact shared URL; local tests and a GitHub push do not establish live availability. Private target details are in the gitignored `.ops/site.local.json` file. The fresh-install/demo instructions below are not an in-place production update procedure.
 
 A self-hosted multi-team kanban application with announcements, drag-and-drop tickets, color-coded team members, and reflection boards. Real-time collaboration is planned but not yet implemented — see [Real-Time Updates](#real-time-updates) below.
@@ -20,6 +22,8 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 ## Features
 
 ### User and GA documentation
+
+The application header's **Help** link opens `/help`. Signed-in users (including observers) see the user guides; **ADMIN** accounts additionally see instructor tools and the GA checklist. These are curated, server-authorized pages compiled into the app—not raw files from `docs/`. Operational records, private inventory, backups, and credentials are never served by Help. The complete offline handoff documents below remain separate.
 
 - [User manual (offline HTML)](docs/user-manual.html)
 - [AI Coach and grounded DCWF guidance](docs/ai-coach.html)

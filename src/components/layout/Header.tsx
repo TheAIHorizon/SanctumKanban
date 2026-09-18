@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag, Target, Wand2, School } from 'lucide-react'
+import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag, Target, Wand2, School, HelpCircle } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { canAccessProfileSettings } from '@/lib/user-profile-security'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -23,8 +23,8 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
-        <Link href="/" className="flex items-center space-x-2 mr-6">
+      <div className="container flex h-14 min-w-0 items-center gap-2">
+        <Link href="/" className="mr-2 flex shrink-0 items-center space-x-2 sm:mr-4">
           <div className="bg-primary p-1.5 rounded-md">
             <Kanban className="h-5 w-5 text-primary-foreground" />
           </div>
@@ -33,7 +33,7 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="flex items-center space-x-4 flex-1">
+        <nav className="flex min-w-0 flex-1 items-center space-x-2 overflow-x-auto [&>a]:shrink-0 sm:space-x-4">
           <Link href="/">
             <Button variant="ghost" size="sm">
               Dashboard
@@ -89,12 +89,18 @@ export function Header() {
           )}
         </nav>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex shrink-0 items-center space-x-1 sm:space-x-2">
           {user?.role === 'OBSERVER' && (
             <span className="hidden sm:inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
               Observing · read only
             </span>
           )}
+          <Button asChild variant="ghost" size="sm" className="px-2" aria-label="Help">
+            <Link href="/help">
+              <HelpCircle className="h-4 w-4 sm:mr-1" aria-hidden="true" />
+              <span className="hidden sm:inline">Help</span>
+            </Link>
+          </Button>
           <ThemeToggle />
           {user && (
             <DropdownMenu>
