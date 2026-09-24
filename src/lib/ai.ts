@@ -28,12 +28,12 @@ export class AiUnavailableError extends Error {}
  */
 export async function chat(
   messages: ChatMessage[],
-  opts: { temperature?: number; maxTokens?: number; json?: boolean; model?: string; timeoutMs?: number } = {}
+  opts: { temperature?: number; maxTokens?: number; json?: boolean; model?: string; timeoutMs?: number; background?: boolean } = {}
 ): Promise<string> {
   const controller = new AbortController()
   const timeoutMs = opts.timeoutMs == null
     ? AI_TIMEOUT_MS
-    : Math.max(1, Math.min(opts.timeoutMs, 45_000))
+    : Math.max(1, Math.min(opts.timeoutMs, opts.background ? 180_000 : 45_000))
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(`${AI_BASE_URL.replace(/\/$/, '')}/chat/completions`, {

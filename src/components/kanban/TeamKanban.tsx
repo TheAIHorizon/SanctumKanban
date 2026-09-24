@@ -94,10 +94,11 @@ interface TeamKanbanProps {
   isTeamLead: boolean
   isMember?: boolean
   viewerRole?: string
+  shortcutsEnabled?: boolean
   readOnly?: boolean
 }
 
-export function TeamKanban({ team, currentUser, isTeamLead, isMember, viewerRole = currentUser.role, readOnly = false }: TeamKanbanProps) {
+export function TeamKanban({ team, currentUser, isTeamLead, isMember, viewerRole = currentUser.role, readOnly = false, shortcutsEnabled = true }: TeamKanbanProps) {
   const [showMembers, setShowMembers] = useState(false)
   const [feedbackTicketId, setFeedbackTicketId] = useState<string | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -119,8 +120,9 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember, viewerRole
     if (!canUseMyTickets) setFilters(prev => ({ ...prev, myTicketsOnly: false }))
   }, [canUseMyTickets])
 
-  // Keyboard shortcuts
+  // Hidden team panels retain filters, but must not respond to shortcuts.
   useEffect(() => {
+    if (!shortcutsEnabled) return
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger when typing in inputs
       const target = e.target as HTMLElement
@@ -174,7 +176,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember, viewerRole
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [canCreateTickets, canUseMyTickets, filters.search])
+  }, [canCreateTickets, canUseMyTickets, filters.search, shortcutsEnabled])
 
   // Filter tickets based on current filters
   const filteredTickets = useMemo(() => {

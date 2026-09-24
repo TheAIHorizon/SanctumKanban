@@ -36,5 +36,7 @@ export const config = {
     '/profile/:path*',
     '/reports/:path*',
     '/help/:path*',
+    '/assessments/:path*',
+    '/support/:path*',
   ],
 }

@@ -1,0 +1,18 @@
+# Add to the EXISTING deployment Compose files; do not replace the NAS configuration.
+# Start only after the additive Assessment schema change has been rehearsed.
+services:
+  assessments:
+    image: ${KANBAN_IMAGE:-sanctumkanban-app:latest}
+    restart: unless-stopped
+    entrypoint: []
+    command: ["npm", "run", "assessments:worker"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-sanctum_kanban}?schema=public
+      ASSESSMENT_RUNNER: "1"
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_ASSESSMENT_MODEL: ${AI_ASSESSMENT_MODEL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+# If the existing app/db use a named network (for example kanban-net), attach
+# assessments to that same network in the site's private deployment override.
+# No ports or schema-sync entrypoint are used by this worker.

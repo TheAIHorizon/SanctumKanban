@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag, Target, Wand2, School, HelpCircle } from 'lucide-react'
+import { Kanban, Settings, Users, LogOut, User, Megaphone, Tag, Target, Wand2, School, HelpCircle, MessageSquare } from 'lucide-react'
 import { getInitials } from '@/lib/utils'
 import { canAccessProfileSettings } from '@/lib/user-profile-security'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -39,6 +39,7 @@ export function Header() {
               Dashboard
             </Button>
           </Link>
+          {user && user.role !== 'OBSERVER' && <Link href="/assessments"><Button variant="ghost" size="sm">{user.role === 'ADMIN' ? 'Assessments' : 'Practice tests'}</Button></Link>}
           {(user?.role === 'ADMIN' || user?.role === 'TEAM_LEAD') && (
             <Link href="/reports">
               <Button variant="ghost" size="sm">
@@ -95,6 +96,7 @@ export function Header() {
               Observing · read only
             </span>
           )}
+          {user && user.role !== 'OBSERVER' && <Button asChild variant="ghost" size="sm" className="px-2" aria-label="Requests & bugs" title="Requests & bugs"><Link href="/support"><MessageSquare className="h-4 w-4 sm:mr-1" aria-hidden="true" /><span className="hidden sm:inline">Requests & bugs</span></Link></Button>}
           <Button asChild variant="ghost" size="sm" className="px-2" aria-label="Help">
             <Link href="/help">
               <HelpCircle className="h-4 w-4 sm:mr-1" aria-hidden="true" />

@@ -124,6 +124,7 @@ try {
   assert.equal(key(stored.dueDate), key(day(4)))
   pass('member opens existing editor and planned dates persist after browser reload')
   await page.getByRole('button', { name: 'Detailed', exact: true }).click()
+  await page.getByRole('button', { name: 'Expand all teams', exact: true }).click()
   await page.getByRole('button', { name: 'Edit Network inventory', exact: true }).click()
   await page.getByRole('dialog').getByRole('combobox').first().click()
   await page.getByRole('option', { name: 'Done', exact: true }).click()

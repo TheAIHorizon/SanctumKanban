@@ -62,6 +62,7 @@ try {
   let sent = 0
   page.on('request', r => { if (r.url().endsWith('/api/dcwf/suggest')) sent++ })
   await page.goto('/?classId=' + workspace.id)
+  await page.getByRole('button', { name: 'Expand all teams', exact: true }).click()
   await page.getByRole('button', { name: 'Edit Synthetic Ubuntu installation', exact: true }).click()
   await page.getByRole('tab', { name: 'AI Coach', exact: true }).click()
   assert.equal(sent, 0, 'Opening the coach must not automatically transmit ticket text')

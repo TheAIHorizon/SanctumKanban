@@ -20,6 +20,53 @@ export interface HelpGuide {
 
 export const HELP_GUIDES = [
   {
+    slug: 'requests-and-bugs',
+    title: 'Feature requests and bug reports',
+    description: 'Suggest improvements, report problems, and track staff responses.',
+    audience: 'authenticated',
+    sections: [
+      { heading: 'Submit a post', blocks: [{ type: 'paragraph', text: 'Signed-in members, team leads, and staff can open Requests & bugs in the header. Choose Bug report or Feature request, enter a title and description, and submit. For a bug, include what you expected, what happened, and optional reproduction steps. Observers cannot submit or read posts.' }] },
+      { heading: 'Track a response', blocks: [{ type: 'paragraph', text: 'My submissions lists your posts. Select one to see its status and staff response. Use type/status filters and Refresh submissions to check for updates. Posts are private to their submitter and staff; other students cannot read them. Do not include passwords, API keys, or private student information.' }] },
+      { heading: 'Staff follow-up', blocks: [{ type: 'paragraph', text: 'Staff see All submissions and can change status to New, Planned, In progress, Resolved, or Closed, and save a response visible to the submitter. Original submitted text is retained. If another staff member changes the same post, refresh before saving again. Submissions remain available to staff if the author account is deleted.' }] },
+    ],
+  },
+  {
+    slug: 'exports-and-assessments',
+    title: 'Team exports and practice tests',
+    description: 'Print a team board or Gantt chart, and study with personalized tests.',
+    audience: 'authenticated',
+    sections: [
+      { heading: 'Export one team', blocks: [
+        { type: 'paragraph', text: 'Choose Export beside the team in Detailed, My Teams, a focused board, or Gantt. Select Detailed board or Gantt, an inclusive date range of up to 366 days, and landscape Letter or Tabloid paper. Print / Save PDF opens a standalone page; use its print button and select the same paper size in your browser dialog. Download HTML saves an offline copy.' },
+        { type: 'paragraph', text: 'Exports include active tickets in that team, with dates overlapping the selected range. Unscheduled tickets use creation/update activity. On-screen search filters do not apply. Long charts split into date slices; a date appendix preserves full titles and recorded dates. Private feedback and individual reports are excluded.' },
+      ] },
+      { heading: 'Generate and take a practice test', blocks: [
+        { type: 'paragraph', text: 'Open Practice tests, select your course and work dates, and generate a new version. A local worker builds 25 multiple-choice questions: five concepts, ten applications, and ten troubleshooting scenarios. You can leave and return while it works. An unchanged queued status means the operator may need to start the worker. Cancel generation if needed.' },
+        { type: 'paragraph', text: 'The test uses your assigned Doing/Done tickets with activity in the range and your own dated DCWF notes, including archived work. Creating another student’s ticket does not count as doing it. Whole-team reflections are not attributed to one student. Thin evidence can prevent generation; document what you did and learned. Each version is saved and avoids exact question stems from the last five successful versions, while topics may recur.' },
+      ] },
+      { heading: 'Learn from your results', blocks: [
+        { type: 'paragraph', text: 'Answer all 25 questions and submit once to see your score and explanations. Scores are study feedback, not course grades. AI can make mistakes; ask your instructor about disputed answers. Other students cannot read your tests. Archived courses retain saved tests but reject generation and submissions.' },
+      ] },
+    ],
+  },
+  {
+    slug: 'instructor-exams',
+    title: 'Instructor exam drafts',
+    description: 'Generate, edit or accept a student-specific exam and print a separate answer key.',
+    audience: 'admin',
+    sections: [
+      { heading: 'Prepare an exam', blocks: [
+        { type: 'paragraph', text: 'In Assessments, choose a course, enrolled student, date range and Instructor exam draft. Optionally paste reference excerpts or expected procedures. Links are not fetched. The user-owned AI endpoint receives the selected evidence and supplied references to produce a new saved version. No ticket content is changed.' },
+      ] },
+      { heading: 'Edit or accept the default', blocks: [
+        { type: 'paragraph', text: 'Inspect the evidence snapshot and question sources, edit any question, options, correct answer or explanation, and save your edits. You may also accept the generated default directly. Accept exam freezes that version and records whether it was edited or accepted unchanged. AI correctness is not guaranteed by acceptance.' },
+      ] },
+      { heading: 'Distribute the exam', blocks: [
+        { type: 'paragraph', text: 'Print student exam contains only questions and choices. Print separate answer key includes correct choices and explanations. Keep the key separate when distributing the exam. Student accounts, including team leads, cannot access instructor drafts or their keys. Online graded-exam delivery is not included in this release; use the printed/exported exam in your existing assessment process.' },
+      ] },
+    ],
+  },
+  {
     slug: 'user-manual',
     title: 'User manual',
     description: 'Start with the dashboard, understand each role, and build a safe daily workflow.',
@@ -30,7 +77,7 @@ export const HELP_GUIDES = [
         blocks: [
           { type: 'paragraph', text: 'The Dashboard is the shared view of class work. Select a class you can access, then use Detailed, Overview, My Teams, or Gantt to choose the amount of context you need.' },
           { type: 'bullets', items: [
-            'Detailed shows the complete boards for visible teams, with your teams first.',
+            'Detailed starts with every team collapsed, with your teams first. Expand teams individually, or use Expand all teams. Collapsing an opened team keeps its filters during that visit.',
             'Overview summarizes team activity and lets you focus one team without leaving the Dashboard.',
             'My Teams is based on recorded team membership and is not available to an Observer.',
           ] },

@@ -1,5 +1,7 @@
 'use client'
 
+import { TeamExport } from './TeamExport'
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
@@ -356,10 +358,10 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
 
             return (
               <section key={team.id} aria-labelledby={`gantt-team-${team.id}`}>
+                <div className="sticky left-0 z-20 flex items-center gap-2 border-b bg-muted/80 pr-3" style={{ width: '100cqw' }}>
                 <button
                   type="button"
-                  className="sticky left-0 z-20 flex w-full items-center gap-2 border-b bg-muted/80 px-3 py-2 text-left font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  style={{ width: '100cqw' }}
+                  className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => toggleTeam(team.id)}
                   aria-expanded={!collapsed}
                   aria-controls={`gantt-team-content-${team.id}`}
@@ -368,6 +370,8 @@ export function GanttView({ teams, currentUser, readOnly = false }: GanttViewPro
                   <span id={`gantt-team-${team.id}`}>{team.name}</span>
                   <span className="text-xs font-normal text-muted-foreground">{team.tickets.length} ticket{team.tickets.length === 1 ? '' : 's'}</span>
                 </button>
+                <TeamExport key={`${team.id}-${dateKey(windowRange.start)}`} teamId={team.id} teamName={team.name} initialView="gantt" initialFrom={dateKey(windowRange.start)!} initialTo={dateKey(windowRange.end)!} />
+                </div>
 
                 {!collapsed && (
                   <div id={`gantt-team-content-${team.id}`}>

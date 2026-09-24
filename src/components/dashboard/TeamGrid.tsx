@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { LayoutGrid, Map, ChevronLeft, Users } from 'lucide-react'
 import { teamsForView } from '@/lib/team-views'
 import { GanttView } from './GanttView'
+import { TeamExport } from './TeamExport'
 
 interface User {
   id: string
@@ -78,6 +79,13 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
   const router = useRouter()
   const [viewMode, setViewMode] = useState<ViewMode>('detailed')
   const [focusedTeamId, setFocusedTeamId] = useState<string | null>(null)
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(() => new Set())
+  const [visitedTeams, setVisitedTeams] = useState<Set<string>>(() => new Set())
+  const toggleTeam = (id: string) => {
+    if (expandedTeams.has(id)) router.refresh()
+    setVisitedTeams(previous => new Set(previous).add(id))
+    setExpandedTeams(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  }
   const orderedTeams = teamsForView(teams, currentUser.id, false)
   const displayedTeams = teamsForView(teams, currentUser.id, viewMode === 'mine')
 
@@ -178,6 +186,10 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
         )}
       </div>
 
+      {viewMode === 'detailed' && <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={() => { setExpandedTeams(new Set(teams.map(t => t.id))); setVisitedTeams(new Set(teams.map(t => t.id))) }}>Expand all teams</Button>
+        <Button variant="outline" size="sm" onClick={() => { setExpandedTeams(new Set()); router.refresh() }}>Collapse all teams</Button>
+      </div>}
       {/* Content based on view mode */}
       {viewMode === 'gantt' && (
         <GanttView teams={orderedTeams} currentUser={currentUser} readOnly={readOnly} />
@@ -200,15 +212,26 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
             const isMember = !readOnly && !!userMembership
 
             return (
-              <TeamKanban
-                key={team.id}
-                team={team}
-                currentUser={readOnly ? { ...currentUser, role: 'OBSERVER' } : currentUser}
-                viewerRole={currentUser.role}
-                readOnly={readOnly}
-                isTeamLead={isTeamLead}
-                isMember={isMember}
-              />
+              <section key={team.id} className="min-w-0 self-start rounded-lg border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  {viewMode === 'detailed' ? <button type="button" className="flex-1 text-left font-semibold" aria-expanded={expandedTeams.has(team.id)} aria-controls={`team-panel-${team.id}`} onClick={() => toggleTeam(team.id)}>
+                    {expandedTeams.has(team.id) ? '▾' : '▸'} {team.name}
+                    <span className="block text-xs font-normal text-muted-foreground">{team.members.length} member{team.members.length === 1 ? '' : 's'} · {team.tickets.filter(t => t.status === 'BACKLOG').length} backlog · {team.tickets.filter(t => t.status === 'DOING').length} doing · {team.tickets.filter(t => t.status === 'DONE').length} done</span>
+                  </button> : <span className="flex-1 font-semibold">{team.name}</span>}
+                  <TeamExport teamId={team.id} teamName={team.name} />
+                </div>
+                <div id={`team-panel-${team.id}`} hidden={viewMode === 'detailed' && !expandedTeams.has(team.id)}>
+                  {(viewMode === 'mine' || visitedTeams.has(team.id)) && <TeamKanban
+                    team={team}
+                    currentUser={readOnly ? { ...currentUser, role: 'OBSERVER' } : currentUser}
+                    viewerRole={currentUser.role}
+                    readOnly={readOnly}
+                    shortcutsEnabled={viewMode === 'mine' || expandedTeams.has(team.id)}
+                    isTeamLead={isTeamLead}
+                    isMember={isMember}
+                  />}
+                </div>
+              </section>
             )
           })}
         </div>
@@ -216,6 +239,7 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
 
       {viewMode === 'focused' && focusedTeam && (
         <div className="w-full">
+          <div className="mb-3"><TeamExport teamId={focusedTeam.id} teamName={focusedTeam.name} /></div>
           {(() => {
             const userMembership = focusedTeam.members.find(
               (m) => m.userId === currentUser.id

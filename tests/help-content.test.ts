@@ -9,15 +9,17 @@ import {
 
 const nonAdminRoles: HelpRole[] = ['MEMBER', 'TEAM_LEAD', 'OBSERVER']
 const publicSlugs = [
+  'requests-and-bugs',
+  'exports-and-assessments',
   'user-manual',
   'tickets',
   'gantt',
   'ai-guidance',
   'team-collaboration',
 ]
-const adminSlugs = ['instructor-tools', 'ga-checklist']
+const adminSlugs = ['instructor-exams', 'instructor-tools', 'ga-checklist']
 
-test('authenticated roles receive the five shared guides', () => {
+test('authenticated roles receive the shared guides', () => {
   for (const role of nonAdminRoles) {
     assert.deepEqual(getHelpGuidesForRole(role).map((guide) => guide.slug), publicSlugs)
   }
@@ -25,8 +27,8 @@ test('authenticated roles receive the five shared guides', () => {
 
 test('admins receive shared and admin-only guides', () => {
   assert.deepEqual(
-    getHelpGuidesForRole('ADMIN').map((guide) => guide.slug),
-    [...publicSlugs, ...adminSlugs]
+    getHelpGuidesForRole('ADMIN').map((guide) => guide.slug).sort(),
+    [...publicSlugs, ...adminSlugs].sort()
   )
 })
 
@@ -54,8 +56,8 @@ test('guide lookup is a strict slug allowlist and rejects path-like input', () =
 })
 
 test('catalogue is typed, complete, meaningful, and contains only renderable text blocks', () => {
-  assert.equal(HELP_GUIDES.length, 7)
-  assert.deepEqual(HELP_GUIDES.map((guide) => guide.slug), [...publicSlugs, ...adminSlugs])
+  assert.equal(HELP_GUIDES.length, 10)
+  assert.deepEqual(HELP_GUIDES.map((guide) => guide.slug).sort(), [...publicSlugs, ...adminSlugs].sort())
 
   for (const guide of HELP_GUIDES) {
     assert.ok(guide.title.length >= 4)
