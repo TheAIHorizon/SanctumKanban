@@ -8,6 +8,10 @@
 4. Establish the requested scope: local development, GitHub publication, or explicitly approved live deployment. They are different outcomes. This NAS serves active students.
 5. Treat `.ops/` process handles, record counts, model observations, and release IDs as historical evidence. Re-inspect before relying on them. Never store or print passwords, keys, tokens, environment-file contents, or database dumps in the repository/chat.
 
+## Research offshoot planning
+
+The approved direction for a separate research product is recorded in [docs/research/BLUEPRINT.md](docs/research/BLUEPRINT.md) and its [agent handoff](docs/research/AGENT-HANDOFF.md). Read both when assigned research work. Their presence does not mean a research repository or deployment exists. Implement research in its own repository, workspace, and database; this course installation remains independent.
+
 ## System map
 
 - Next.js 14 App Router, React, TypeScript, Tailwind/shadcn UI.

@@ -19,6 +19,10 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 
 **Core Principles**: Privacy first • Data sovereignty • Local AI • Self-hosted • No telemetry
 
+## Research offshoot planning
+
+The proposed independent SanctumResearch application is described in the [research blueprint](docs/research/BLUEPRINT.md) and [agent handoff](docs/research/AGENT-HANDOFF.md). These are planning documents; this repository continues to run the course Kanban.
+
 ## Features
 
 ### User and GA documentation
