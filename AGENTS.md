@@ -2,6 +2,12 @@
 
 This document provides a quick reference for AI agents working on this codebase.
 
+## Required release order
+
+**Test → commit → push to GitHub → verify the remote commit → deploy that exact commit to the NAS.**
+
+When the user approves deploying tested changes, that approval also authorizes committing and pushing the relevant code, tests, and documentation first; do not ask for separate publication approval. Local-only work does not imply deployment or publication approval. Never deploy unpublished or uncommitted application changes. If the push or remote verification fails, stop before changing the live deployment. Keep secrets, private NAS configuration, backups, and `.ops/` out of Git. Follow `OPERATIONS.md` for backup, rehearsal, write pause, and deployment verification.
+
 ## Sanctum Suite Context
 
 SanctumKanban is part of the **Sanctum Suite** — a collection of privacy-first, local-AI productivity tools:

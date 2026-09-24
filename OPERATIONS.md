@@ -6,6 +6,14 @@ For codebase orientation and continuation/testing instructions, read [CONTINUATI
 
 Before code, configuration, database, networking, or deployment work, read this file and the private inventory at `.ops/site.local.json`. If the inventory is missing, obtain the real target from the owner; do not guess. The inventory is intentionally gitignored because this repository is public. It contains no passwords. Keep a protected copy outside this checkout.
 
+## Standing release order
+
+**Test → commit → push to GitHub → verify the remote commit → deploy that exact commit to the NAS.** This is the owner's standing requirement.
+
+Approval to deploy tested changes includes authorization to commit and push the relevant code, tests, schema changes, and documentation first. Do not request a separate publication confirmation for that approved release. Local-only work does not imply publication or deployment approval.
+
+Before any live deployment change, confirm that the exact candidate commit exists on the intended GitHub branch and that the deployed application source matches it. Build from that committed source, without uncommitted additions. If publication or remote verification fails, leave the live deployment unchanged. Keep private NAS configuration, secrets, backups, and `.ops/` outside Git and apply site configuration separately.
+
 ## Three different outcomes
 
 1. **Local verified**: local code/build/test database only.
@@ -56,7 +64,7 @@ The private inventory records the exact public URL and port, NAS LAN address, no
 
 ## Safe application upgrade
 
-1. Pin the reviewed Git commit and build a **linux/amd64** candidate suitable for the NAS. Build before the outage. Preserve the old image under a rollback tag.
+1. After tests pass and the release is approved, commit the relevant changes, push to GitHub, and verify the exact remote commit. Pin that published commit and build a **linux/amd64** candidate from its clean source. Build before the outage. Preserve the old image under a rollback tag.
 2. Save a protected database backup and deployment/source configuration archive outside the app directory. Verify the dump can be read and restore it into a separate rehearsal database.
 3. Generate the schema difference against the actual current schema. Review every statement. Nullable-column additions are not permission to apply unrelated deletions, defaults, rewrites, or destructive changes.
 4. Apply the approved delta on the restored copy. Compare pre-existing record counts and content fingerprints; exercise representative behavior without contacting the live database.

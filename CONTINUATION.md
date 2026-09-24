@@ -109,7 +109,7 @@ Known existing warnings include React-hook dependencies in admin teams, profile 
 ## Before publishing or deploying
 
 1. Gather context and write/run regression tests before code changes. Run real integration/browser checks for changed flows; perform an independent review for multi-file work.
-2. Inspect the exact staged files for secrets/unrelated changes. Verify the remote commit after a push. Do not commit or push without user authorization.
+2. Follow the standing release order: test → commit → push to GitHub → verify the remote commit → deploy that exact commit. Approval to deploy tested changes includes authorization to commit and push their relevant code, tests, and documentation first; do not ask for separate publication confirmation. Inspect staged files for secrets/unrelated changes. If publication or remote verification fails, leave the live deployment unchanged. Never deploy uncommitted or unpublished application changes.
 3. A source push is not a NAS update. Obtain explicit live-deployment and write-pause approval.
 4. Follow `OPERATIONS.md`: current baseline, protected backup, restored-copy rehearsal, approved schema delta, candidate image, final backup under write pause, preserved volume/configuration, and rollback image.
 5. Verify both app and worker revisions, schema, selected content integrity, authentication, feature behavior, and the exact public URL/network path. Record access caveats separately; do not change certificates or routing incidentally.
