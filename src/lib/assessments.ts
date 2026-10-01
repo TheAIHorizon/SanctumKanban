@@ -1,5 +1,5 @@
 import { z } from 'zod'
-export const ASSESSMENT_PROMPT_VERSION = 'personal-assessment-v1'
+export const ASSESSMENT_PROMPT_VERSION = 'personal-assessment-v2'
 export const QuestionSchema = z.object({
   stem: z.string().trim().min(12).max(1800),
   options: z.array(z.string().trim().min(1).max(800)).length(4),
@@ -51,12 +51,12 @@ export function sameQuestions(left: unknown, right: unknown): boolean {
   return a.success && b.success && JSON.stringify(a.data) === JSON.stringify(b.data)
 }
 
-/** Read one complete JSON object, tolerating prose/fences or a provider's trailing wrapper.
+/** Read one complete JSON object or array, tolerating prose/fences or a provider's trailing wrapper.
  * Never repair truncated objects or invent missing answers. Schema validation follows. */
 export function parseAssessmentJson(raw: string): unknown {
   if (raw.length > 150_000) throw new Error('Model response is too large.')
-  const start = raw.indexOf('{')
-  if (start < 0) throw new Error('No JSON object returned.')
+  const start = raw.search(/[\[{]/)
+  if (start < 0) throw new Error('No JSON object or array returned.')
   let depth = 0, quoted = false, escaped = false
   for (let i = start; i < raw.length; i++) {
     const ch = raw[i]
@@ -65,8 +65,8 @@ export function parseAssessmentJson(raw: string): unknown {
       else if (ch === '\\') escaped = true
       else if (ch === '"') quoted = false
     } else if (ch === '"') quoted = true
-    else if (ch === '{') depth++
-    else if (ch === '}' && --depth === 0) return JSON.parse(raw.slice(start, i + 1))
+    else if (ch === '{' || ch === '[') depth++
+    else if ((ch === '}' || ch === ']') && --depth === 0) return JSON.parse(raw.slice(start, i + 1))
   }
   throw new Error('Incomplete JSON object.')
 }

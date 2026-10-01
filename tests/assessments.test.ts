@@ -40,10 +40,20 @@ test('model JSON parsing tolerates wrappers but never repairs incomplete questio
   assert.deepEqual(parseAssessmentJson('```json\n{"text":"a } bracket", "nested":{"ok":true}}\n```"}'), { text: 'a } bracket', nested: { ok: true } })
   assert.throws(() => parseAssessmentJson('{"questions":[{"stem":"unfinished"}'))
   assert.throws(() => parseAssessmentJson('{invalid}'))
+  assert.deepEqual(parseAssessmentJson('```json\n[{"stem":"Why does a [bracket] appear?", "options":["a", "b"]}, {"stem":"Second question"}]\n```'), [{ stem: 'Why does a [bracket] appear?', options: ['a', 'b'] }, { stem: 'Second question' }])
+  assert.throws(() => parseAssessmentJson('[{"stem":"Complete first question"}, {"stem":"unfinished"}'))
+  assert.throws(() => parseAssessmentJson('[{"stem":"Mismatched delimiters"]}'))
 })
 test('explanations keep original answer text when choices are shuffled', () => {
   const q = { ...questions[0], explanation: 'Choice 0 collects evidence; option B removes it.' } as AssessmentQuestion
   const result = explanationWithAnswerText(q)
   assert.ok(result.includes(q.options[0])); assert.ok(result.includes(q.options[1]))
   assert.equal(explanationWithAnswerText({ ...q, explanation: 'Use the log to answer a question.' }), 'Use the log to answer a question.')
+})
+
+
+test('the first complete JSON value survives appended text without accepting malformed delimiters', () => {
+  assert.deepEqual(parseAssessmentJson('{"questions":[]} Extra notes {not JSON}'), { questions: [] })
+  assert.throws(() => parseAssessmentJson('{"questions":[]]'))
+  assert.throws(() => parseAssessmentJson('{"questions":[{"stem":"unterminated}]}'))
 })

@@ -20,7 +20,13 @@ export interface ChatMessage {
   content: string
 }
 
-export class AiUnavailableError extends Error {}
+export type AiFailureCode = 'timeout' | 'network' | 'http' | 'invalid_response' | 'truncated' | 'unavailable'
+export class AiUnavailableError extends Error {
+  constructor(message: string, readonly code: AiFailureCode = 'unavailable', readonly status?: number) {
+    super(message)
+    this.name = 'AiUnavailableError'
+  }
+}
 
 /**
  * Call an OpenAI-compatible /chat/completions endpoint and return the text.
@@ -28,7 +34,7 @@ export class AiUnavailableError extends Error {}
  */
 export async function chat(
   messages: ChatMessage[],
-  opts: { temperature?: number; maxTokens?: number; json?: boolean; model?: string; timeoutMs?: number; background?: boolean } = {}
+  opts: { temperature?: number; maxTokens?: number; json?: boolean; model?: string; timeoutMs?: number; background?: boolean; requireComplete?: boolean } = {}
 ): Promise<string> {
   const controller = new AbortController()
   const timeoutMs = opts.timeoutMs == null
@@ -53,17 +59,25 @@ export async function chat(
       }),
     })
     if (!res.ok) {
-      throw new AiUnavailableError(`AI endpoint returned ${res.status}`)
+      throw new AiUnavailableError(`AI endpoint returned ${res.status}`, 'http', res.status)
     }
-    const data = await res.json()
+    let data
+    try { data = await res.json() } catch (err) {
+      if (controller.signal.aborted) throw err
+      throw new AiUnavailableError('AI endpoint returned an invalid response', 'invalid_response')
+    }
+    if (opts.requireComplete && data?.choices?.[0]?.finish_reason === 'length') {
+      throw new AiUnavailableError('AI response reached its output limit', 'truncated')
+    }
     const content = data?.choices?.[0]?.message?.content
     if (typeof content !== 'string') {
-      throw new AiUnavailableError('AI response missing content')
+      throw new AiUnavailableError('AI response missing content', 'invalid_response')
     }
     return content
-  } catch (err: any) {
+  } catch (err) {
     if (err instanceof AiUnavailableError) throw err
-    throw new AiUnavailableError(err?.message || 'AI request failed')
+    // Keep provider bodies, URLs and arbitrary network errors out of saved failures.
+    throw new AiUnavailableError(controller.signal.aborted ? 'AI request timed out' : 'AI request failed', controller.signal.aborted ? 'timeout' : 'network')
   } finally {
     clearTimeout(timer)
   }

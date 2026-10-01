@@ -11,7 +11,7 @@ services:
       ASSESSMENT_RUNNER: "1"
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_MODEL: ${AI_MODEL:-}
-      AI_ASSESSMENT_MODEL: ${AI_ASSESSMENT_MODEL:-}
+      AI_ASSESSMENT_MODEL: ${AI_ASSESSMENT_MODEL:-nemotron-3-super}
       AI_API_KEY: ${AI_API_KEY:-}
 # If the existing app/db use a named network (for example kanban-net), attach
 # assessments to that same network in the site's private deployment override.
