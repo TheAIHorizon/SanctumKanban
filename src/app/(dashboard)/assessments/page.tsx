@@ -9,5 +9,6 @@ export default async function AssessmentPage() {
   if (session.user.role === 'OBSERVER') redirect('/')
   const staff = session.user.role === 'ADMIN'
   const classes = await prisma.classWorkspace.findMany({ where: staff ? {} : { members: { some: { userId: session.user.id } } }, orderBy: { name: 'asc' }, select: { id: true, name: true, archivedAt: true, members: { where: staff ? { user: { role: { not: 'OBSERVER' } } } : { userId: session.user.id }, select: { user: { select: { id: true, firstName: true, lastName: true } } } } } })
-  return <Assessments staff={staff} userId={session.user.id} classes={classes.map(c => ({ id: c.id, name: c.name, archived: !!c.archivedAt, students: c.members.map(m => ({ id: m.user.id, name: `${m.user.firstName} ${m.user.lastName}` })) }))} />
+  const historical = staff ? await prisma.assessment.findMany({ distinct: ['classWorkspaceId', 'studentId'], select: { classWorkspaceId: true, student: { select: { id: true, firstName: true, lastName: true } } } }) : []
+  return <Assessments staff={staff} userId={session.user.id} classes={classes.map(c => ({ id: c.id, name: c.name, archived: !!c.archivedAt, students: c.members.map(m => ({ id: m.user.id, name: `${m.user.firstName} ${m.user.lastName}` })), historyStudents: staff ? Array.from(new Map([...c.members.map(m => m.user), ...historical.filter(a => a.classWorkspaceId === c.id).map(a => a.student)].map(s => [s.id, { id: s.id, name: `${s.firstName} ${s.lastName}` }])).values()) : [] }))} />
 }

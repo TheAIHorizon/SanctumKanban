@@ -45,14 +45,15 @@ export const HELP_GUIDES = [
         { type: 'paragraph', text: 'The test uses your assigned Doing/Done tickets with activity in the range and your own dated DCWF notes, including archived work. Creating another student’s ticket does not count as doing it. Whole-team reflections are not attributed to one student. Thin evidence can prevent generation; document what you did and learned. Each version is saved and avoids exact question stems from the last five successful versions, while topics may recur.' },
       ] },
       { heading: 'Learn from your results', blocks: [
+        { type: 'paragraph', text: 'Saved versions lists your practice history for the selected course. Filter by status or search a version ID, and use Previous page and Next page to reach older tests. Click a version to reopen it; generating a new test does not replace the earlier versions.' },
         { type: 'paragraph', text: 'Answer all 25 questions and submit once to see your score and explanations. Scores are study feedback, not course grades. AI can make mistakes; ask your instructor about disputed answers. Other students cannot read your tests. Archived courses retain saved tests but reject generation and submissions.' },
       ] },
     ],
   },
   {
     slug: 'instructor-exams',
-    title: 'Instructor exam drafts',
-    description: 'Generate, edit or accept a student-specific exam and print a separate answer key.',
+    title: 'Assessment history and Canvas exams',
+    description: 'Browse assessment history by student or class, accept exams, and export quizzes for Canvas.',
     audience: 'admin',
     sections: [
       { heading: 'Prepare an exam', blocks: [
@@ -61,8 +62,23 @@ export const HELP_GUIDES = [
       { heading: 'Edit or accept the default', blocks: [
         { type: 'paragraph', text: 'Inspect the evidence snapshot and question sources, edit any question, options, correct answer or explanation, and save your edits. You may also accept the generated default directly. Accept exam freezes that version and records whether it was edited or accepted unchanged. AI correctness is not guaranteed by acceptance.' },
       ] },
-      { heading: 'Distribute the exam', blocks: [
-        { type: 'paragraph', text: 'Print student exam contains only questions and choices. Print separate answer key includes correct choices and explanations. Keep the key separate when distributing the exam. Student accounts, including team leads, cannot access instructor drafts or their keys. Online graded-exam delivery is not included in this release; use the printed/exported exam in your existing assessment process.' },
+      { heading: 'Find every saved assessment', blocks: [
+        { type: 'paragraph', text: 'Assessments are saved in the Kanban database. Open Assessments and use the Assessment library. Choose All courses or a specific course, then filter by student, type or status, or search by student name or version ID. Previous page and Next page show the complete history, including failed generations. Staff can still read historical versions after a student leaves a class. Students see only their own practice tests in courses they can access.' },
+      ] },
+      { heading: 'Download for Canvas', blocks: [
+        { type: 'paragraph', text: 'Open an accepted exam or ready practice test and choose Export Canvas quiz for a single QTI ZIP, using four points per question (100 total). For class downloads, choose a specific course in the library. Select versions across pages, or choose Export latest accepted exams for class to include one accepted exam per student. That class button uses the whole selected course, not the library filters. Downloads are limited to 100 quizzes each. Exam drafts must be accepted before export; queued and failed versions cannot be exported.' },
+        { type: 'paragraph', text: 'Classic Quizzes: choose the combined QTI package, then in Canvas use Course Settings > Import Course Content > QTI .zip file. New Quizzes: choose individual quiz ZIPs in a bundle, extract that outer bundle, create a new quiz shell for each assessment, and use Build > Options > Import Content to import its individual ZIP. The single-quiz download works in either engine. Each bundle includes instructions and a quiz index.' },
+      ] },
+      { heading: 'Assign and grade in Canvas', blocks: [
+        { type: 'paragraph', text: 'Before publishing, check the imported questions, correct answers, point values and feedback visibility. Assign each personalized quiz only to its intended student and remove Everyone. QTI does not map Kanban users to Canvas enrollments or apply assignment overrides. Each assessment imports as a separate quiz; it does not produce one shared final-exam Gradebook column. Match the New Quizzes assignment points to the quiz total.' },
+        { type: 'paragraph', text: 'Students take the quiz in Canvas for Canvas grading. These downloads transfer quiz content, not existing Kanban practice scores or submissions. No Canvas credentials or automatic uploads are involved. Packages contain student names in titles and correct answers; keep them private. Ticket evidence, instructor references, responses and existing scores are excluded.' },
+      ] },
+      { heading: 'Print an accepted exam', blocks: [
+        { type: 'paragraph', text: 'Print student exam contains only questions and choices. Print separate answer key includes correct choices and explanations. Keep the key separate when distributing the exam. Student accounts, including team leads, cannot access instructor drafts, keys or Canvas export packages.' },
+      ] },
+      { heading: 'Resolve download or import issues', blocks: [
+        { type: 'paragraph', text: 'If class export finds no accepted exams, open a ready exam and choose Accept exam. If Export selected is disabled, choose a specific course and select at least one eligible version. Split selections larger than 100 quizzes into smaller downloads. Changing library filters clears the selection.' },
+        { type: 'paragraph', text: 'Test an import in your Canvas course before assigning a class batch. If New Quizzes rejects a class bundle, extract it first and select one individual ZIP from its quizzes folder. Keep overwrite matching IDs off during Classic imports unless you intentionally want to replace an earlier import. Institutional Canvas settings can affect the available import options.' },
       ] },
     ],
   },

@@ -9,7 +9,12 @@ export async function assessmentScope(db: PrismaClient | Prisma.TransactionClien
   // In mutation transactions, serialize against class archival/deletion.
   if (write) await db.$queryRaw`SELECT id FROM "ClassWorkspace" WHERE id=${classId} FOR SHARE`
   const workspace = await db.classWorkspace.findUnique({ where: { id: classId }, select: { id: true, name: true, archivedAt: true, members: { where: { userId: studentId, user: { role: { not: 'OBSERVER' } } }, select: { userId: true } } } })
-  if (!workspace || !workspace.members.length) throw new AssessmentError('Student is not enrolled in this course.', 404)
+  if (!workspace) throw new AssessmentError('Course unavailable.', 404)
+  if (!workspace.members.length) {
+    // Staff retain read/export access to historical assessments after unenrollment.
+    const historical = !write && user.role === 'ADMIN' && await db.assessment.findFirst({ where: { classWorkspaceId: classId, studentId }, select: { id: true } })
+    if (!historical) throw new AssessmentError('Student is not enrolled in this course.', 404)
+  }
   if (write && workspace.archivedAt) throw new AssessmentError('Archived courses are read only.', 409)
   return workspace
 }

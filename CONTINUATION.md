@@ -37,6 +37,7 @@ The approved direction for a separate research product is recorded in [docs/rese
 | Saved guidance | `SavedTicketGuidance.tsx`, `src/app/api/tickets/[id]/guidance/route.ts` |
 | Nightly settings/runner | `src/lib/nightly-review*.ts`, `scripts/nightly-ticket-review.ts`, class nightly-review API, `NightlyReviewSettings.tsx` |
 | Application Help | `/help`, `/help/[slug]`, `src/lib/help-content.ts` |
+| Assessments and Canvas export | `src/components/assessments/`, `src/app/api/assessments/library/`, `src/app/api/assessments/canvas/`, `src/lib/canvas-qti.ts`, `docs/course-assessments.md` |
 | Runtime packaging | `Dockerfile`, Compose files, `docker-entrypoint.sh`, `.dockerignore` |
 | Verification | `tests/`, `scripts/system-check.mjs`, `scripts/database-check.mjs`, guarded check scripts below |
 

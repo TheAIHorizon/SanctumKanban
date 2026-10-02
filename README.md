@@ -30,6 +30,7 @@ The proposed independent SanctumResearch application is described in the [resear
 The application header's **Help** link opens `/help`. Signed-in users (including observers) see the user guides; **ADMIN** accounts additionally see instructor tools and the GA checklist. These are curated, server-authorized pages compiled into the app—not raw files from `docs/`. Operational records, private inventory, backups, and credentials are never served by Help. The complete offline handoff documents below remain separate.
 
 - [User manual (offline HTML)](docs/user-manual.html)
+- [Assessment history, personalized exams, and Canvas imports](docs/course-assessments.md)
 - [AI Coach and grounded DCWF guidance](docs/ai-coach.html)
 - [Private instructor feedback and saved nightly AI reviews](docs/feedback-and-nightly-review.html)
 - [Live student-site operations and incident/rollback procedures](OPERATIONS.md)

@@ -1,7 +1,8 @@
 // Owned synthetic fixtures only. Never point this script at the NAS.
 import assert from 'node:assert/strict'
 import { randomUUID, randomBytes } from 'node:crypto'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { unzipSync, strFromU8 } from 'fflate'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { chat } from '../src/lib/ai'
@@ -126,6 +127,56 @@ async function main() {
     const keyHtml = await (await admin.api.get(`/api/assessments/${exam.id}/export?key=1`)).text()
     assert.ok(!testHtml.includes('Inspecting service logs supplies')); assert.ok(keyHtml.includes('Inspecting service logs supplies'))
     pass('instructor edits and accepts a private exam with separate student and answer-key exports')
+    const exportBody = { classId: classes[0].id, ids: [exam.id], format: 'qti', points: 4 }
+    assert.equal((await student.api.post('/api/assessments/canvas', { data: exportBody })).status(), 403)
+    assert.equal((await observer.api.post('/api/assessments/canvas', { data: exportBody })).status(), 403)
+    assert.equal((await admin.api.post('/api/assessments/canvas', { data: { ...exportBody, classId: classes[1].id } })).status(), 404)
+    assert.equal((await admin.api.post('/api/assessments/canvas', { data: { ...exportBody, points: 0 } })).status(), 400)
+    assert.equal((await admin.api.post('/api/assessments/canvas', { data: { ...exportBody, ids: [exam.id, queued.id], format: 'individual' } })).status(), 200)
+    const classic = await admin.api.post('/api/assessments/canvas', { data: { classId: classes[0].id, latestApproved: true, format: 'qti', points: 4 } })
+    assert.equal(classic.status(), 200); assert.equal(classic.headers()['cache-control'], 'private, no-store')
+    const classicBytes = await classic.body(); await writeFile(output + '/synthetic-classic.zip', classicBytes)
+    const qti = unzipSync(classicBytes), content = strFromU8(Object.entries(qti).find(([p]) => p.endsWith('/assessment.xml'))![1])
+    assert.equal((content.match(/<item ident=/g) || []).length, 25)
+    const exportedAnswers = Array.from(content.matchAll(/<varequal respident="response1">choice_(\d)<\/varequal>/g), m => Number(m[1]))
+    assert.deepEqual(exportedAnswers, accepted.questions.map((q: AssessmentQuestion) => q.correctIndex))
+    assert.ok(!content.includes('Use evidence-based troubleshooting.'))
+    const individual = await admin.api.post('/api/assessments/canvas', { data: { ...exportBody, ids: [exam.id, queued.id], format: 'individual' } })
+    await writeFile(output + '/synthetic-new-quizzes.zip', await individual.body())
+    assert.equal(Object.keys(unzipSync(await individual.body())).filter(p => p.endsWith('.zip')).length, 2)
+    const downloaded = admin.page.waitForEvent('download')
+    await admin.page.getByRole('button', { name: 'Export Canvas quiz (100 points)', exact: true }).click()
+    assert.match((await downloaded).suggestedFilename(), /canvas-qti/)
+    pass('Canvas exports preserve all answer mappings, separate class quizzes, deny students and exclude references')
+    await db.assessment.createMany({ data: Array.from({ length: 51 }, (_, i) => ({ studentId: users[1].id, classWorkspaceId: classes[0].id, createdById: users[0].id, mode: 'EXAM', status: 'FAILED', from: '2026-01-01', to: '2026-12-31', sources: [], promptVersion: 'synthetic-library', createdAt: new Date(Date.now() - (i + 10) * 60000) })) })
+    const listed = await (await admin.api.get(`/api/assessments/library?classId=${classes[0].id}`)).json()
+    assert.equal(listed.total, 53); assert.equal(listed.items.length, 25)
+    const lastPage = await (await admin.api.get(`/api/assessments/library?classId=${classes[0].id}&page=3`)).json()
+    assert.equal(lastPage.items.length, 3)
+    assert.ok(!JSON.stringify(listed).includes('correctIndex')); assert.ok(!JSON.stringify(listed).includes('sources'))
+    assert.equal((await student.api.get('/api/assessments/library?classId=all')).status(), 404)
+    assert.equal((await other.api.get(`/api/assessments/library?classId=${classes[0].id}&studentId=${users[1].id}`)).status(), 404)
+    const personal = await (await student.api.get(`/api/assessments/library?classId=${classes[0].id}`)).json()
+    assert.equal(personal.total, 1)
+    await admin.page.goto('/assessments')
+    await admin.page.getByLabel('Course', { exact: true }).selectOption(classes[0].id)
+    const library = admin.page.getByRole('region', { name: 'Assessment library' })
+    await library.getByText('53 saved versions · Page 1 of 3', { exact: true }).waitFor()
+    await library.getByRole('button', { name: 'Next page' }).click()
+    await library.getByText('53 saved versions · Page 2 of 3', { exact: true }).waitFor()
+    await library.getByRole('button', { name: 'Next page' }).click()
+    await library.getByText('53 saved versions · Page 3 of 3', { exact: true }).waitFor()
+    await library.getByLabel('Assessment status').selectOption('APPROVED')
+    await library.getByText('1 saved version · Page 1 of 1', { exact: true }).waitFor()
+    await library.getByLabel('Select exportable assessments on this page').check()
+    const classDownload = admin.page.waitForEvent('download')
+    await library.getByRole('button', { name: 'Export selected (1)' }).click()
+    await classDownload
+    await admin.page.screenshot({ path: output + '/assessment-library-desktop.png', fullPage: true })
+    await admin.page.setViewportSize({ width: 390, height: 844 })
+    await admin.page.screenshot({ path: output + '/assessment-library-mobile.png', fullPage: true })
+    await admin.page.setViewportSize({ width: 1440, height: 1000 })
+    pass('assessment library exposes history beyond 50, class/student filters and browser batch downloads')
     // Prove a canceled in-flight inference cannot publish stale results.
     await db.assessment.update({ where: { id: exam.id }, data: { createdAt: new Date(Date.now() - 120000) } })
     const cancel = await (await student.api.post('/api/assessments', { data: payload })).json()
@@ -136,6 +187,28 @@ async function main() {
     assert.equal((await student.api.post('/api/assessments', { data: payload })).status(), 409)
     assert.equal((await student.api.get(`/api/assessments/${queued.id}`)).status(), 200)
     pass('cancel fences in-flight results; archived classes retain reads and reject generation')
+    await db.classWorkspaceMember.deleteMany({ where: { classWorkspaceId: classes[0].id, userId: users[1].id } })
+    assert.equal((await admin.api.get(`/api/assessments/${exam.id}`)).status(), 200)
+    assert.equal((await admin.api.post('/api/assessments/canvas', { data: exportBody })).status(), 200)
+    assert.equal((await student.api.get(`/api/assessments/${queued.id}`)).status(), 404)
+    await db.classWorkspaceMember.create({ data: { classWorkspaceId: classes[0].id, userId: users[1].id } })
+    pass('staff retain historical assessments after unenrollment without restoring student access')
+    // Latest-class export chooses one accepted version per student, without letting
+    // a newer unaccepted draft hide an older accepted exam.
+    const savedExam = await db.assessment.findUniqueOrThrow({ where: { id: exam.id } })
+    const cloneData = { studentId: users[1].id, classWorkspaceId: classes[0].id, createdById: users[0].id, mode: 'EXAM' as const, from: savedExam.from, to: savedExam.to, sources: savedExam.sources as any, questions: savedExam.questions as any, promptVersion: 'synthetic-batch' }
+    const older = await db.assessment.create({ data: { ...cloneData, status: 'APPROVED', createdAt: new Date(Date.now() - 600000) } })
+    const draft = await db.assessment.create({ data: { ...cloneData, status: 'READY' } })
+    const otherExam = await db.assessment.create({ data: { ...cloneData, studentId: users[2].id, status: 'APPROVED' } })
+    assert.equal((await admin.api.post('/api/assessments/canvas', { data: { ...exportBody, ids: [exam.id, draft.id] } })).status(), 409)
+    const latest = await admin.api.post('/api/assessments/canvas', { data: { classId: classes[0].id, latestApproved: true, format: 'individual', points: 2 } })
+    assert.equal(latest.status(), 200)
+    const latestFiles = unzipSync(await latest.body()), index = JSON.parse(strFromU8(latestFiles['quiz-index.json']))
+    assert.deepEqual(index.map((row: { version: string }) => row.version).sort(), [exam.id, otherExam.id].sort())
+    assert.ok(index.every((row: { points: number }) => row.points === 50))
+    assert.ok(!index.some((row: { version: string }) => row.version === older.id || row.version === draft.id))
+    await db.assessment.deleteMany({ where: { id: { in: [older.id, draft.id, otherExam.id] } } })
+    pass('class export chooses each student’s latest accepted exam and rejects mixed draft selections')
     assert.deepEqual(errors, [])
     if (process.env.ASSESSMENT_REAL_AI === '1') {
       await db.classWorkspace.update({ where: { id: classes[0].id }, data: { archivedAt: null } })
