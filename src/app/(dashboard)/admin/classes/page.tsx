@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ClassResourceEditor } from '@/components/resources/ClassResourceEditor'
 import { NightlyReviewSettings } from '@/components/admin/NightlyReviewSettings'
+import { IndividualBoards } from '@/components/classes/IndividualBoards'
+import { StudentRosterImport } from '@/components/classes/StudentRosterImport'
 
 interface Workspace {
   id: string
@@ -35,6 +37,8 @@ export default function ClassesPage() {
   const [description, setDescription] = useState('')
   const [copyFrom, setCopyFrom] = useState('')
   const [resourceClassId, setResourceClassId] = useState<string | null>(null)
+  const [individualClass, setIndividualClass] = useState<{ id: string; name: string } | null>(null)
+  const [importClass, setImportClass] = useState<{ id: string; name: string } | null>(null)
 
   const load = async () => {
     const [a, old] = await Promise.all([
@@ -63,6 +67,7 @@ export default function ClassesPage() {
       const created = await response.json()
       toast({ title: 'Class created', description: `${created.name} is ready with ${created._count.teams} team boards.` })
       setName(''); setCode(''); setTerm(''); setDescription(''); setCopyFrom(''); setShowCreate(false)
+      setImportClass({ id: created.id, name: created.name })
       load()
     } else {
       toast({ title: 'Could not create class', variant: 'destructive' })
@@ -88,7 +93,7 @@ export default function ClassesPage() {
           <div>
             <CardTitle className="text-base">{workspace.name}</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              {[workspace.code, workspace.term].filter(Boolean).join(' · ') || 'No code/term'} · {workspace._count.teams} teams
+              {[workspace.code, workspace.term].filter(Boolean).join(' · ') || 'No code/term'} · {workspace._count.teams} boards
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => lifecycle(workspace, isArchived ? 'restore' : 'archive')}>
@@ -100,6 +105,8 @@ export default function ClassesPage() {
       <CardContent>
         {workspace.description && <p className="text-sm text-muted-foreground mb-3">{workspace.description}</p>}
         <div className="flex flex-wrap gap-2">
+          {!isArchived && <Button variant="outline" size="sm" disabled={!!importClass || !!individualClass} onClick={() => setImportClass({ id: workspace.id, name: workspace.name })}>Import students</Button>}
+          {!isArchived && <Button variant="outline" size="sm" disabled={!!importClass || !!individualClass} onClick={() => setIndividualClass({ id: workspace.id, name: workspace.name })}>One Kanban per student</Button>}
           {!isArchived && (
             <Link href={`/admin/classes/${workspace.id}/deliverables`}>
               <Button variant="outline" size="sm">Deliverables</Button>
@@ -131,9 +138,9 @@ export default function ClassesPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Classes</h1>
-          <p className="text-muted-foreground">Each class has its own teams and board. Archive a completed class without losing its history.</p>
+          <p className="text-muted-foreground">Each class can use group boards or one Kanban per student. Archive a completed class without losing its history.</p>
         </div>
-        <Button onClick={() => setShowCreate(!showCreate)}><Plus className="mr-1 h-4 w-4" />New class</Button>
+        <Button disabled={!!importClass || !!individualClass} onClick={() => setShowCreate(!showCreate)}><Plus className="mr-1 h-4 w-4" />New class</Button>
       </div>
 
       {showCreate && (
@@ -153,12 +160,16 @@ export default function ClassesPage() {
             </div>
             <div className="sm:col-span-2"><Label>Description</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div>
             <div className="sm:col-span-2 flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground flex items-center gap-1"><Copy className="h-3.5 w-3.5" />Copying creates clean, empty boards—no old tickets or students.</p>
-              <Button onClick={create} disabled={saving || !name.trim()}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create class'}</Button>
+              <p className="text-xs text-muted-foreground flex items-center gap-1"><Copy className="h-3.5 w-3.5" />Copying creates empty group boards. Individual boards are created from the new student roster.</p>
+              <Button onClick={create} disabled={saving || !name.trim() || !!importClass || !!individualClass}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create class'}</Button>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {individualClass && <IndividualBoards key={individualClass.id} classId={individualClass.id} className={individualClass.name} onComplete={load} onClose={() => setIndividualClass(null)} />}
+
+      {importClass && <StudentRosterImport key={importClass.id} classId={importClass.id} className={importClass.name} onComplete={load} onClose={() => setImportClass(null)} />}
 
       <section>
         <h2 className="font-semibold mb-3">Active classes ({active.length})</h2>

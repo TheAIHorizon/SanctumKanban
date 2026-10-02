@@ -31,6 +31,7 @@ The application header's **Help** link opens `/help`. Signed-in users (including
 
 - [User manual (offline HTML)](docs/user-manual.html)
 - [Assessment history, personalized exams, and Canvas imports](docs/course-assessments.md)
+- [Bulk student enrollment from CSV or Excel](docs/student-roster-import.md)
 - [AI Coach and grounded DCWF guidance](docs/ai-coach.html)
 - [Private instructor feedback and saved nightly AI reviews](docs/feedback-and-nightly-review.html)
 - [Live student-site operations and incident/rollback procedures](OPERATIONS.md)

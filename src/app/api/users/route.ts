@@ -101,6 +101,9 @@ export async function GET(request: NextRequest) {
           role: true,
           color: true,
           createdAt: true,
+          classMemberships: {
+            select: { classWorkspace: { select: { id: true, name: true, code: true, term: true, archivedAt: true } } },
+          },
           teamMemberships: {
             include: {
               team: {

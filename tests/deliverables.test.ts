@@ -90,7 +90,7 @@ test('distribution creates workflow tags and only missing tickets while preservi
   let nextTag = 0
   const tx = {
     classWorkspace: {
-      findUnique: async () => ({ archivedAt: null, teams: [{ id: 'alpha' }, { id: 'beta' }] }),
+      findUnique: async () => ({ archivedAt: null, teams: [{ id: 'alpha', individualOwnerId: null }, { id: 'beta', individualOwnerId: 'student-beta' }] }),
     },
     tag: {
       findFirst: async ({ where }: any) => where.name === REQUIRED_TAG ? { id: 'required-tag' } : null,
@@ -127,6 +127,7 @@ test('distribution creates workflow tags and only missing tickets while preservi
   ])
   assert.equal(created[0].tags.create[0].tagId, 'new-tag-1')
   assert.equal(created[1].tags.create[0].tagId, 'required-tag')
+  assert.deepEqual(created.map(ticket => ticket.assigneeId), [null, 'student-beta', 'student-beta'])
   assert.equal(histories.length, 3)
 })
 

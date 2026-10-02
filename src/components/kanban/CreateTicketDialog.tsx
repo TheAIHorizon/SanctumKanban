@@ -108,6 +108,7 @@ interface CreateTicketDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   teamId: string
+  individualOwnerId?: string | null
   members: TeamMember[]
   tags?: Tag[]
   onTicketCreated: (ticket: Ticket) => void
@@ -117,6 +118,7 @@ export function CreateTicketDialog({
   open,
   onOpenChange,
   teamId,
+  individualOwnerId,
   members,
   tags = [],
   onTicketCreated,
@@ -124,7 +126,7 @@ export function CreateTicketDialog({
   const [selectedTemplate, setSelectedTemplate] = useState('blank')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [assigneeId, setAssigneeId] = useState<string>('')
+  const [assigneeId, setAssigneeId] = useState<string>(individualOwnerId || '')
   const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
@@ -187,7 +189,7 @@ export function CreateTicketDialog({
     setSelectedTemplate('blank')
     setTitle('')
     setDescription('')
-    setAssigneeId('')
+    setAssigneeId(individualOwnerId || '')
     setStartDate('')
     setDueDate('')
     setSelectedTagIds([])

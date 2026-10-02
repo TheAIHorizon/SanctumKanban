@@ -93,6 +93,7 @@ export const HELP_GUIDES = [
         blocks: [
           { type: 'paragraph', text: 'The Dashboard is the shared view of class work. Select a class you can access, then use Detailed, Overview, My Teams, or Gantt to choose the amount of context you need.' },
           { type: 'bullets', items: [
+            'For an individual-work class, your instructor can give you a board named after you. Find it under My Teams. Use its tickets, reflections, Gantt chart and exports as usual. New tickets default to you; classmates retain normal viewing access.',
             'Detailed starts with every team collapsed, with your teams first. Expand teams individually, or use Expand all teams. Collapsing an opened team keeps its filters during that visit.',
             'Overview summarizes team activity and lets you focus one team without leaving the Dashboard.',
             'My Teams is based on recorded team membership and is not available to an Observer.',
@@ -292,7 +293,7 @@ export const HELP_GUIDES = [
   {
     slug: 'instructor-tools',
     title: 'Instructor tools',
-    description: 'Manage classes, resources, deliverables, feedback, and nightly review from the ADMIN interface.',
+    description: 'Import CSV or Canvas rosters, create individual student boards, find users by class, and manage instructor tools.',
     audience: 'admin',
     sections: [
       {
@@ -307,14 +308,41 @@ export const HELP_GUIDES = [
         ],
       },
       {
+        heading: 'Find and sort users',
+        blocks: [
+          { type: 'paragraph', text: 'On Users, choose a class to see its enrolled accounts, including students who do not yet have a team or individual board. The selector includes active and archived classes, All classes / all users, and No class enrollment. Class filtering does not change enrollment or permissions.' },
+          { type: 'paragraph', text: 'Type a first name, last name, partial name or email in Search name or email. Search ignores capitalization and common accents; multiple words may be entered in either name order. It combines with the class filter. Clear filters returns to the full list. The count shows how many users match.' },
+          { type: 'paragraph', text: 'Click Name, Email, Contact, Role, Classes, Teams or Joined to sort; click the same heading again to reverse the order. Name sorts by last name, then first name; Joined sorts by account creation date. Empty cells stay last. Classes lists every enrollment; when a class is selected, Teams shows only boards in that class. A user enrolled in several classes appears once in the list. Editing an account keeps the current filter and sort while refreshing the results.' },
+        ],
+      },
+      {
         heading: 'Class setup and distribution',
         blocks: [
           { type: 'paragraph', text: 'A new class can start empty or copy team names from another workspace without copying students or old tickets. Student resources accept only the class’s real web destinations.' },
           { type: 'bullets', items: [
-            'Deliverables create unassigned Backlog tickets across teams in the selected active class.',
+            'Deliverables create Backlog tickets across boards in the selected active class. Group-board tickets start unassigned; individual-board tickets are assigned to their student.',
             'Required and Bonus or Extra classifications use the corresponding global work tags.',
             'Review the confirmation before distribution and verify results in the intended class.',
           ] },
+        ],
+      },
+      {
+        heading: 'Bulk import students',
+        blocks: [
+          { type: 'paragraph', text: 'Create a class in Classes; the student import panel opens after creation. You can also choose Import students on any active class. Download the CSV template and replace the example rows with your students. Use exactly First name, Last name, and Email. In Excel, choose Save As > CSV UTF-8. Upload up to 100 students per file, then choose Preview roster.' },
+          { type: 'paragraph', text: 'For Canvas, download Course Analytics (sometimes called New Analytics) > Reports > Class Roster, then upload its CSV. Gradebook CSV exports are also supported when an Email or SIS Login ID column contains full email addresses. Select Canvas roster / Gradebook CSV, check the suggested column mapping, and choose separate name columns, Last, First, or First Last. The last option splits at the first space; use separate columns if compound names are split incorrectly. No email address is invented from a username or SIS number.' },
+          { type: 'paragraph', text: 'Canvas uploads can be up to 1 MB, with at most 100 student rows. Only names and emails leave the browser; grades, section data and SIS IDs are excluded. Recognized leading Gradebook metadata rows are ignored. Remove a Canvas Test Student row without an email, correct missing addresses, and keep one row per student if an export repeats section enrollments. Canvas report fields depend on your school’s permissions. Changing column mapping clears the preview so you can review it again.' },
+          { type: 'paragraph', text: 'Review which accounts will be created, enrolled or skipped as already enrolled, then choose Import reviewed students. Duplicate emails and invalid rows must be corrected before importing; no partial roster is saved. Existing student accounts are matched by email without regard to capitalization and keep their names, passwords, roles and work. Staff and observer accounts cannot be imported as students. A changed roster or account match requires a new preview.' },
+          { type: 'paragraph', text: 'Download new student logins immediately after a successful import. Only newly created accounts receive individual initial passwords; existing students keep their usual login. Share each student’s own credentials privately, never the entire sheet. Ask students to change their password in Profile; a first-login change is not enforced. The page cannot retrieve the generated passwords after you leave. If the response or sheet is lost, check the roster again and reset affected new accounts in Users; reimporting never resets passwords.' },
+          { type: 'paragraph', text: 'For individual work, check One Kanban per student before previewing a standard or Canvas roster. Each student gets their own board; already enrolled students can receive a missing board too. Reimports keep existing individual boards and all group work. Without this option, import only enrolls students; use Teams afterward for group boards. Select the option again on later imports. Archived classes reject changes until restored.' },
+        ],
+      },
+      {
+        heading: 'One Kanban per student',
+        blocks: [
+          { type: 'paragraph', text: 'For an existing class, choose One Kanban per student on its Classes card, then Preview individual boards and Create reviewed boards. Enroll students first. The preview lists students and which boards will be created or kept. Instructors and observers are excluded. Repeat after enrolling more students; existing boards are reused even if renamed.' },
+          { type: 'paragraph', text: 'Each board is named after its student and has that student as its only member. The student can manage the board without becoming an administrator. It has the usual tickets, reflections, Gantt chart, exports and assessment evidence. New tickets default to the student, and class deliverables are assigned to them. Existing tickets and group boards are unchanged; use a group board if several people need membership.' },
+          { type: 'paragraph', text: 'Individual means one student doing the work, not private visibility: classmates can still view boards under current class rules. The same student has a separate board in each class. Copying team names to a new class skips individual boards; create those from the new roster.' },
         ],
       },
       {

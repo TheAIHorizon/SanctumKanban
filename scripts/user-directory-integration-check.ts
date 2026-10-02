@@ -1,0 +1,100 @@
+// Synthetic fixtures only. This script refuses live hosts/databases.
+import assert from 'node:assert/strict'
+import { randomUUID, randomBytes } from 'node:crypto'
+import { mkdir } from 'node:fs/promises'
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+const database = new URL(process.env.DATABASE_URL || 'file:///missing')
+assert.equal(database.hostname, '127.0.0.1'); assert.equal(database.port, '55439'); assert.equal(database.pathname, '/sanctum_ga_check')
+assert.equal(process.env.GA_BASE_URL, 'http://127.0.0.1:3459')
+async function main() {
+  const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
+  const browser = await chromium.launch({ headless: true }), db = new PrismaClient({ log: [] })
+  const users: string[] = [], classes: string[] = [], suffix = randomUUID(), password = randomBytes(18).toString('hex')
+  const output = process.env.DIRECTORY_QA_OUTPUT || '/tmp/sanctum-directory-check'; await mkdir(output, { recursive: true })
+  const hash = await bcrypt.hash(password, 10)
+  async function makeUser(firstName: string, lastName: string, role: 'ADMIN' | 'MEMBER' = 'MEMBER') {
+    const user = await db.user.create({ data: { email: `${firstName.toLowerCase()}-${suffix}@example.invalid`, firstName, lastName, role, passwordHash: hash } }); users.push(user.id); return user
+  }
+  async function login(email: string) {
+    const context = await browser.newContext({ baseURL: process.env.GA_BASE_URL, viewport: { width: 1440, height: 1000 } })
+    const csrf = await (await context.request.get('/api/auth/csrf')).json()
+    await context.request.post('/api/auth/callback/credentials', { form: { email, password, csrfToken: csrf.csrfToken, json: 'true' } })
+    assert.ok((await (await context.request.get('/api/auth/session')).json()).user)
+    return context
+  }
+  try {
+    const admin = await makeUser('Directory', 'Instructor', 'ADMIN'), amir = await makeUser('Amir', 'Zulu'), zara = await makeUser('Zara', 'Alpha'), unenrolled = await makeUser('NoClass', 'Example')
+    const course = await db.classWorkspace.create({ data: { name: 'Directory current ' + suffix, code: 'QA-101', term: 'Fall', createdById: admin.id, members: { create: [{ userId: amir.id }, { userId: zara.id }] } } }); classes.push(course.id)
+    const old = await db.classWorkspace.create({ data: { name: 'Directory archived ' + suffix, archivedAt: new Date(), createdById: admin.id, members: { create: { userId: amir.id } } } }); classes.push(old.id)
+    const empty = await db.classWorkspace.create({ data: { name: 'Directory empty ' + suffix, createdById: admin.id } }); classes.push(empty.id)
+    const team = await db.team.create({ data: { name: 'Current team', classWorkspaceId: course.id, members: { create: { userId: amir.id } } } })
+    await db.team.create({ data: { name: 'Old team', classWorkspaceId: old.id, members: { create: { userId: amir.id } } } })
+    const staff = await login(admin.email), student = await login(amir.email)
+    const anonymous = await browser.newContext({ baseURL: process.env.GA_BASE_URL })
+    assert.equal((await anonymous.request.get('/api/users')).status(), 401)
+    assert.equal((await student.request.get('/api/users')).status(), 400)
+    const peerResponse = await student.request.get(`/api/users?teamId=${team.id}`); assert.equal(peerResponse.status(), 200)
+    const peer = await peerResponse.json(); assert.ok(peer.every((u: any) => !('classMemberships' in u) && !('passwordHash' in u)))
+    const response = await staff.request.get('/api/users'); assert.equal(response.status(), 200)
+    const all = await response.json(); assert.ok(all.every((u: any) => !('passwordHash' in u)))
+    assert.equal(all.find((u: any) => u.id === zara.id).teamMemberships.length, 0)
+    assert.equal(all.find((u: any) => u.id === zara.id).classMemberships[0].classWorkspace.id, course.id)
+    const page = await staff.newPage(), errors: string[] = []; page.on('pageerror', (e: Error) => { errors.push(e.message); console.error('Browser error:', e.message) })
+    await page.goto('/admin/users')
+    await page.getByLabel('Class', { exact: true }).selectOption(course.id)
+    const table = page.getByRole('table', { name: 'User directory' })
+    const rows = table.locator('tbody tr')
+    assert.equal(await rows.count(), 2)
+    assert.ok((await rows.nth(0).innerText()).includes('Zara Alpha'))
+    assert.ok((await rows.nth(1).innerText()).includes('Amir Zulu'))
+    assert.equal(await table.getByText('Old team', { exact: true }).count(), 0)
+    assert.equal(await table.getByText('Current team', { exact: true }).count(), 1)
+    await page.getByRole('button', { name: 'Sort by Name', exact: true }).click()
+    assert.ok((await rows.nth(0).innerText()).includes('Amir Zulu'))
+    assert.equal(await page.getByRole('columnheader').filter({ hasText: 'Name' }).getAttribute('aria-sort'), 'descending')
+    for (const label of ['Email', 'Contact', 'Role', 'Classes', 'Teams', 'Joined']) {
+      await page.getByRole('button', { name: `Sort by ${label}`, exact: true }).click()
+      const header = page.getByRole('columnheader').filter({ has: page.getByRole('button', { name: `Sort by ${label}`, exact: true }) })
+      assert.equal(await header.getAttribute('aria-sort'), 'ascending')
+      await page.getByRole('button', { name: `Sort by ${label}`, exact: true }).click()
+      assert.equal(await header.getAttribute('aria-sort'), 'descending')
+    }
+    await page.getByLabel('Search name or email').fill(' ZULU, amir ')
+    assert.equal(await rows.count(), 1); assert.ok((await rows.first().innerText()).includes('Amir Zulu'))
+    await page.getByRole('button', { name: 'Edit Amir Zulu', exact: true }).click()
+    const dialog = page.getByRole('dialog'); await dialog.getByLabel('Contact Info', { exact: true }).fill('Synthetic office 22')
+    const saved = page.waitForResponse((r: any) => r.url().endsWith(`/api/users/${amir.id}`) && r.request().method() === 'PATCH')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click(); assert.equal((await saved).status(), 200)
+    await dialog.waitFor({ state: 'hidden' }); await table.getByText('Synthetic office 22', { exact: true }).waitFor()
+    assert.equal(await page.getByLabel('Class', { exact: true }).inputValue(), course.id)
+    assert.equal(await page.getByLabel('Search name or email').inputValue(), ' ZULU, amir ')
+    assert.equal(await db.user.findUniqueOrThrow({ where: { id: amir.id } }).then(u => u.passwordHash), hash)
+    await page.getByLabel('Search name or email').fill(zara.email.toUpperCase())
+    assert.equal(await rows.count(), 1); assert.ok((await rows.first().innerText()).includes('Zara Alpha'))
+    await page.getByLabel('Search name or email').fill('does-not-exist')
+    await page.getByText('No users match this class and search. Try another name or clear the filters.', { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Clear filters' }).click()
+    await page.getByLabel('Class', { exact: true }).selectOption(old.id)
+    assert.equal(await rows.count(), 1); assert.ok((await rows.first().innerText()).includes('Amir Zulu'))
+    await page.getByLabel('Class', { exact: true }).selectOption(empty.id)
+    await page.getByText('No users match this class and search. Try another name or clear the filters.', { exact: true }).waitFor()
+    await page.getByLabel('Class', { exact: true }).selectOption('__no_class__')
+    await page.getByLabel('Search name or email').fill(unenrolled.email)
+    assert.equal(await rows.count(), 1); assert.ok((await rows.first().innerText()).includes('NoClass Example'))
+    await page.getByRole('button', { name: 'Clear filters' }).click()
+    await page.getByLabel('Class', { exact: true }).selectOption(course.id)
+    await page.screenshot({ path: output + '/users-desktop.png', fullPage: true })
+    await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: output + '/users-mobile.png', fullPage: true })
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true)
+    assert.deepEqual(errors, [])
+    console.log('PASS admin-only enrollment metadata, no password exposure, class filtering without teams, archived/empty/no-class views, combined name/email search, all sortable headers and edit refresh preserving filters')
+    console.log('PASS desktop/mobile views and no browser errors; synthetic fixtures cleaned up')
+  } finally {
+    await browser.close()
+    await db.classWorkspace.deleteMany({ where: { id: { in: classes } } })
+    await db.user.deleteMany({ where: { id: { in: users } } })
+    await db.$disconnect()
+  }
+}
+main().catch(e => { console.error(e.message); process.exitCode = 1 })

@@ -26,7 +26,7 @@ test('class packages keep assessments separate and New Quizzes bundles contain i
   const combined = unzipSync(buildCanvasExport([a, b], 'qti'))
   const manifest = strFromU8(combined['imsmanifest.xml'])
   assert.equal((manifest.match(/<resource identifier=/g) || []).length, 2)
-  for (const [, href] of manifest.matchAll(/<file href="([^"]+)"/g)) assert.ok(combined[href])
+  for (const [, href] of Array.from(manifest.matchAll(/<file href="([^"]+)"/g))) assert.ok(combined[href])
   const bundle = unzipSync(buildCanvasExport([a, b], 'individual'))
   assert.ok(!bundle['imsmanifest.xml'])
   const zipNames = Object.keys(bundle).filter(name => name.endsWith('.zip'))

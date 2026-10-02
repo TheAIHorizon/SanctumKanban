@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const source = copyTeamStructureFromId
     ? await prisma.classWorkspace.findUnique({
         where: { id: copyTeamStructureFromId },
-        select: { teams: { select: { name: true, description: true }, orderBy: { name: 'asc' } } },
+        select: { teams: { where: { individualOwnerId: null }, select: { name: true, description: true }, orderBy: { name: 'asc' } } },
       })
     : null
 

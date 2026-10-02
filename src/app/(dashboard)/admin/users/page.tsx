@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,12 +31,14 @@ import {
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { getInitials, formatDate } from '@/lib/utils'
-import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff } from 'lucide-react'
+import { classLabel, directoryClasses, directoryTeams, selectDirectoryUsers, NO_CLASS, type DirectoryClass, type UserSortColumn, type SortDirection } from '@/lib/user-directory'
+import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
 interface TeamMembership {
   team: {
     id: string
     name: string
+    classWorkspaceId: string | null
   }
 }
 
@@ -49,12 +51,20 @@ interface User {
   role: 'ADMIN' | 'TEAM_LEAD' | 'MEMBER'
   color: string
   createdAt: string
+  classMemberships: { classWorkspace: DirectoryClass }[]
   teamMemberships: TeamMembership[]
 }
 
 export default function UsersPage() {
   const { toast } = useToast()
   const [users, setUsers] = useState<User[]>([])
+  const [classes, setClasses] = useState<DirectoryClass[]>([])
+  const [classId, setClassId] = useState('')
+  const [search, setSearch] = useState('')
+  const [column, setColumn] = useState<UserSortColumn>('name')
+  const [direction, setDirection] = useState<SortDirection>('asc')
+  const [loadError, setLoadError] = useState('')
+  const visibleUsers = useMemo(() => selectDirectoryUsers(users, { classId, search, column, direction }), [users, classId, search, column, direction])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -71,14 +81,15 @@ export default function UsersPage() {
   const [color, setColor] = useState('#3b82f6')
 
   const fetchUsers = async () => {
+    setLoadError('')
     try {
-      const response = await fetch('/api/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error)
+      const responses = await Promise.all([fetch('/api/users'), fetch('/api/classes'), fetch('/api/classes?archived=true')])
+      if (responses.some(response => !response.ok)) throw new Error('Could not load the user directory. Please retry.')
+      const [data, active, archived] = await Promise.all(responses.map(response => response.json()))
+      setUsers(data)
+      setClasses([...active, ...archived].sort((a, b) => classLabel(a).localeCompare(classLabel(b), 'en', { numeric: true, sensitivity: 'base' })))
+    } catch {
+      setLoadError('Could not load the user directory. Please retry.')
     } finally {
       setLoading(false)
     }
@@ -202,6 +213,14 @@ export default function UsersPage() {
     }
   }
 
+  const sortHeader = (key: UserSortColumn, label: string) => (
+    <TableHead aria-sort={column === key ? direction === 'asc' ? 'ascending' : 'descending' : 'none'}>
+      <button type="button" className="inline-flex items-center gap-1 py-3 whitespace-nowrap hover:text-foreground focus-visible:outline focus-visible:outline-2" title={key === 'name' ? 'Sort by last name, then first name' : `Sort by ${label.toLowerCase()}`} aria-label={`Sort by ${label}`} onClick={() => { setColumn(key); setDirection(column === key && direction === 'asc' ? 'desc' : 'asc') }}>
+        {label}{column !== key ? <ArrowUpDown aria-hidden="true" className="h-3.5 w-3.5" /> : direction === 'asc' ? <ArrowUp aria-hidden="true" className="h-3.5 w-3.5" /> : <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />}
+      </button>
+    </TableHead>
+  )
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -225,29 +244,47 @@ export default function UsersPage() {
         </Button>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1"><Label htmlFor="user-class-filter">Class</Label>
+          <select id="user-class-filter" value={classId} onChange={e => setClassId(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
+            <option value="">All classes / all users</option>
+            <option value={NO_CLASS}>No class enrollment</option>
+            <optgroup label="Active classes">{classes.filter(c => !c.archivedAt).map(c => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}</optgroup>
+            <optgroup label="Archived classes">{classes.filter(c => c.archivedAt).map(c => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}</optgroup>
+          </select>
+        </div>
+        <div className="space-y-1"><Label htmlFor="user-search">Search name or email</Label><Input id="user-search" type="search" placeholder="First name, last name, or email…" value={search} onChange={e => setSearch(e.target.value)} /></div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p role="status" className="text-sm text-muted-foreground">Showing {visibleUsers.length} of {users.length} users. Click a column heading to sort; click again to reverse. Name sorts by last name.</p>
+        <Button variant="outline" size="sm" disabled={!classId && !search} onClick={() => { setClassId(''); setSearch('') }}>Clear filters</Button>
+      </div>
+      {loadError && <div role="alert" className="flex flex-wrap items-center gap-3 text-destructive">{loadError}<Button variant="outline" onClick={fetchUsers}>Retry</Button></div>}
+
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table aria-label="User directory">
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Teams</TableHead>
-                <TableHead>Joined</TableHead>
+                {sortHeader('name', 'Name')}
+                {sortHeader('email', 'Email')}
+                {sortHeader('contact', 'Contact')}
+                {sortHeader('role', 'Role')}
+                {sortHeader('classes', 'Classes')}
+                {sortHeader('teams', 'Teams')}
+                {sortHeader('joined', 'Joined')}
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.length === 0 ? (
+              {visibleUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    No users found. Create your first user!
+                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                    {loadError ? 'User directory unavailable.' : users.length === 0 ? 'No users found. Create your first user!' : 'No users match this class and search. Try another name or clear the filters.'}
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((user) => (
+                visibleUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -280,9 +317,12 @@ export default function UsersPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      {user.teamMemberships.length > 0 ? (
+                      {directoryClasses(user).length ? <div className="space-y-1 min-w-[150px]">{directoryClasses(user).map(course => <p key={course.id} className="text-xs">{classLabel(course)}</p>)}</div> : <span className="text-muted-foreground">No class enrollment</span>}
+                    </TableCell>
+                    <TableCell>
+                      {directoryTeams(user, classId).length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {user.teamMemberships.slice(0, 2).map((tm) => (
+                          {directoryTeams(user, classId).slice(0, 2).map((tm) => (
                             <span
                               key={tm.team.id}
                               className="text-xs bg-muted px-2 py-0.5 rounded"
@@ -290,9 +330,9 @@ export default function UsersPage() {
                               {tm.team.name}
                             </span>
                           ))}
-                          {user.teamMemberships.length > 2 && (
+                          {directoryTeams(user, classId).length > 2 && (
                             <span className="text-xs text-muted-foreground">
-                              +{user.teamMemberships.length - 2} more
+                              +{directoryTeams(user, classId).length - 2} more
                             </span>
                           )}
                         </div>
@@ -306,6 +346,7 @@ export default function UsersPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label={`Edit ${user.firstName} ${user.lastName}`}
                           onClick={() => handleEdit(user)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -313,6 +354,7 @@ export default function UsersPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label={`Delete ${user.firstName} ${user.lastName}`}
                           onClick={() => handleDelete(user)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />

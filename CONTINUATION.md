@@ -8,6 +8,12 @@
 4. Establish the requested scope: local development, GitHub publication, or explicitly approved live deployment. They are different outcomes. This NAS serves active students.
 5. Treat `.ops/` process handles, record counts, model observations, and release IDs as historical evidence. Re-inspect before relying on them. Never store or print passwords, keys, tokens, environment-file contents, or database dumps in the repository/chat.
 
+## Roster and Users directory release (2026-10-02)
+
+Standard CSV and Canvas roster imports plus optional **One Kanban per student** are included in this release. See [the import guide](docs/student-roster-import.md) for setup, validation and limits. The individual-board extension adds the nullable `Team.individualOwnerId` relation and unique class/owner index; existing group work remains unchanged. Local verification passed 264 unit tests, six guarded browser/API groups, lint (existing warnings), TypeScript and production build. No student records were used. The owner approved publication and NAS deployment on October 2. Follow OPERATIONS.md and check the private inventory for the verified deployment result; this document alone does not establish live status. Rehearse its additive migration on a restored backup; prior deployment scripts assuming an empty schema delta cannot be reused unchanged.
+
+The Users page now also has enrollment-based class filters (active, archived and no enrollment), combined name/email search, sortable data columns and a Classes column. Its directory extension passed 267 unit tests, a guarded browser/API check, lint with existing warnings, TypeScript and production build. Help and the import guide cover the workflow. This extension is part of the same approved release.
+
 ## Research offshoot planning
 
 The approved direction for a separate research product is recorded in [docs/research/BLUEPRINT.md](docs/research/BLUEPRINT.md) and its [agent handoff](docs/research/AGENT-HANDOFF.md). Read both when assigned research work. Their presence does not mean a research repository or deployment exists. Implement research in its own repository, workspace, and database; this course installation remains independent.
@@ -37,6 +43,8 @@ The approved direction for a separate research product is recorded in [docs/rese
 | Saved guidance | `SavedTicketGuidance.tsx`, `src/app/api/tickets/[id]/guidance/route.ts` |
 | Nightly settings/runner | `src/lib/nightly-review*.ts`, `scripts/nightly-ticket-review.ts`, class nightly-review API, `NightlyReviewSettings.tsx` |
 | Application Help | `/help`, `/help/[slug]`, `src/lib/help-content.ts` |
+| Users directory / class filters | `src/app/(dashboard)/admin/users/page.tsx`, `src/app/api/users/route.ts`, `src/lib/user-directory.ts` |
+| Bulk student enrollment / individual boards | `src/components/classes/StudentRosterImport.tsx`, `src/app/api/classes/[id]/students/import/`, `src/lib/student-roster*.ts`, `src/lib/individual-boards.server.ts`, `docs/student-roster-import.md` |
 | Assessments and Canvas export | `src/components/assessments/`, `src/app/api/assessments/library/`, `src/app/api/assessments/canvas/`, `src/lib/canvas-qti.ts`, `docs/course-assessments.md` |
 | Runtime packaging | `Dockerfile`, Compose files, `docker-entrypoint.sh`, `.dockerignore` |
 | Verification | `tests/`, `scripts/system-check.mjs`, `scripts/database-check.mjs`, guarded check scripts below |
@@ -94,6 +102,8 @@ npm run build
 Guarded local checks require the explicit loopback app/database values documented in the scripts:
 
 - `scripts/ga-integration-check.ts`: real auth/API/database writes on owned synthetic fixtures; cleanup in finally.
+- `scripts/user-directory-integration-check.ts`: Users class/name filters, sortable columns, preserved filters after editing, and admin-only enrollment metadata; local synthetic fixtures only.
+- `scripts/student-roster-integration-check.ts`: CSV preview/import, enrollment and unique logins, existing-account preservation, repeat/concurrent imports, new-class UI and archive guards; synthetic cleanup in finally.
 - `scripts/gantt-browser-check.mjs`: dates, permissions, responsive Gantt; optional fixture retention is local-only.
 - `scripts/ai-coach-check.mjs`: real Laguna S/manual UI and grounding; bounded retry distinguishes fallback from actual AI.
 - `scripts/nightly-review-check.ts`: real saved review, CLI, dedupe, timezone lease, and controlled race checks.

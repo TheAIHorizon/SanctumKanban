@@ -51,6 +51,7 @@ model User {
 
   // Relations
   teamMemberships  TeamMember[]
+  individualBoards Team[] @relation("IndividualBoardOwner")
   classMemberships ClassWorkspaceMember[]
   classesCreated   ClassWorkspace[]       @relation("ClassWorkspaceCreatedBy")
   assignedTickets  Ticket[]               @relation("AssignedTickets")
@@ -126,11 +127,14 @@ model Team {
   name             String
   description      String?
   classWorkspaceId String?
+  // Stable identity for one student's board in a class; names can change.
+  individualOwnerId String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   // Relations
   classWorkspace ClassWorkspace? @relation(fields: [classWorkspaceId], references: [id], onDelete: Cascade)
+  individualOwner User? @relation("IndividualBoardOwner", fields: [individualOwnerId], references: [id], onDelete: SetNull)
   members        TeamMember[]
   tickets        Ticket[]
   reflections    Reflection[]
@@ -140,6 +144,7 @@ model Team {
   feedbackReads      TeamFeedbackRead[]
 
   @@index([classWorkspaceId])
+  @@unique([classWorkspaceId, individualOwnerId])
 }
 
 // Junction table for User-Team many-to-many relationship

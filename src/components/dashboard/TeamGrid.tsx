@@ -51,6 +51,7 @@ interface Reflection {
 }
 
 interface Team {
+  individualOwnerId?: string | null
   id: string
   name: string
   description: string | null
@@ -216,7 +217,7 @@ export function TeamGrid({ teams, currentUser, readOnly = false }: TeamGridProps
                 <div className="flex items-center gap-2 mb-2">
                   {viewMode === 'detailed' ? <button type="button" className="flex-1 text-left font-semibold" aria-expanded={expandedTeams.has(team.id)} aria-controls={`team-panel-${team.id}`} onClick={() => toggleTeam(team.id)}>
                     {expandedTeams.has(team.id) ? '▾' : '▸'} {team.name}
-                    <span className="block text-xs font-normal text-muted-foreground">{team.members.length} member{team.members.length === 1 ? '' : 's'} · {team.tickets.filter(t => t.status === 'BACKLOG').length} backlog · {team.tickets.filter(t => t.status === 'DOING').length} doing · {team.tickets.filter(t => t.status === 'DONE').length} done</span>
+                    <span className="block text-xs font-normal text-muted-foreground">{team.individualOwnerId ? 'Individual board · ' : ''}{team.members.length} member{team.members.length === 1 ? '' : 's'} · {team.tickets.filter(t => t.status === 'BACKLOG').length} backlog · {team.tickets.filter(t => t.status === 'DOING').length} doing · {team.tickets.filter(t => t.status === 'DONE').length} done</span>
                   </button> : <span className="flex-1 font-semibold">{team.name}</span>}
                   <TeamExport teamId={team.id} teamName={team.name} />
                 </div>

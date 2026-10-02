@@ -72,6 +72,7 @@ interface Reflection {
 }
 
 interface Team {
+  individualOwnerId?: string | null
   id: string
   name: string
   description: string | null
@@ -235,6 +236,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember, viewerRole
           <div>
             <CardTitle className="flex items-center gap-2 text-xl">
               {team.name}
+              {team.individualOwnerId && <span className="text-xs font-normal text-muted-foreground">Individual board</span>}
               {canReadFeedback && unreadCount > 0 && <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">{unreadCount} unread</span>}
             </CardTitle>
             {team.description && (
@@ -386,6 +388,7 @@ export function TeamKanban({ team, currentUser, isTeamLead, isMember, viewerRole
       </CardContent>
 
       <CreateTicketDialog
+        individualOwnerId={team.individualOwnerId}
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         teamId={team.id}

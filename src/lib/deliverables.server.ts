@@ -41,14 +41,14 @@ export async function distributeDeliverablesInTransaction(
 ): Promise<{ created: number; skipped: number; teams: number; deliverables: number }> {
   const workspace = await tx.classWorkspace.findUnique({
     where: { id: classId },
-    select: { archivedAt: true, teams: { select: { id: true }, orderBy: { id: 'asc' } } },
+    select: { archivedAt: true, teams: { select: { id: true, individualOwnerId: true }, orderBy: { id: 'asc' } } },
   })
   if (!workspace) throw new DeliverableDistributionError('Class not found', 404)
   if (workspace.archivedAt) {
     throw new DeliverableDistributionError('Archived classes are read-only', 409)
   }
 
-  const teams: Array<{ id: string }> = workspace.teams
+  const teams: Array<{ id: string; individualOwnerId?: string | null }> = workspace.teams
   if (teams.length === 0) {
     return { created: 0, skipped: 0, teams: 0, deliverables: deliverables.length }
   }
@@ -108,6 +108,7 @@ export async function distributeDeliverablesInTransaction(
         status: 'BACKLOG',
         position,
         teamId: item.teamId,
+        assigneeId: teams.find(team => team.id === item.teamId)?.individualOwnerId ?? null,
         createdById: adminUserId,
         tags: { create: [{ tagId: tagIds.get(tagName)! }] },
       },

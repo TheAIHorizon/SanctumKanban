@@ -27,6 +27,10 @@ export async function POST(
       return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
     }
 
+    if (team.individualOwnerId) {
+      return NextResponse.json({ error: 'Individual boards have one fixed student. Use a group board for shared membership.' }, { status: 409 })
+    }
+
     const isAdmin = session.user.role === 'ADMIN'
     const isTeamLead = team.members.some(
       (m) => m.userId === session.user.id && m.role === 'LEAD'
@@ -132,6 +136,10 @@ export async function DELETE(
     }
     if (team.classWorkspace?.archivedAt) {
       return NextResponse.json({ error: 'Archived class boards are read-only' }, { status: 409 })
+    }
+
+    if (team.individualOwnerId) {
+      return NextResponse.json({ error: 'Individual boards have one fixed student. Use a group board for shared membership.' }, { status: 409 })
     }
 
     const isAdmin = session.user.role === 'ADMIN'

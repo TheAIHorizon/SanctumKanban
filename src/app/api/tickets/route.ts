@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
 
     const ticket = await prisma.$transaction(async (tx) => {
       // The team lock serializes creation within a board, including an empty column.
-      const teams = await tx.$queryRaw<{ id: string; classWorkspaceId: string | null }[]>`
-        SELECT "id", "classWorkspaceId"
+      const teams = await tx.$queryRaw<{ id: string; classWorkspaceId: string | null; individualOwnerId: string | null }[]>`
+        SELECT "id", "classWorkspaceId", "individualOwnerId"
         FROM "Team"
         WHERE "id" = ${teamId}
         FOR UPDATE
@@ -114,16 +114,18 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      const effectiveAssigneeId = assigneeId === undefined ? team.individualOwnerId : assigneeId
+
       // If an assignee is specified, lock and re-read their membership too.
-      if (assigneeId) {
+      if (effectiveAssigneeId) {
         await tx.$queryRaw<{ id: string }[]>`
           SELECT "id"
           FROM "TeamMember"
-          WHERE "teamId" = ${teamId} AND "userId" = ${assigneeId}
+          WHERE "teamId" = ${teamId} AND "userId" = ${effectiveAssigneeId}
           FOR UPDATE
         `
         const assigneeMembership = await tx.teamMember.findUnique({
-          where: { userId_teamId: { userId: assigneeId, teamId } },
+          where: { userId_teamId: { userId: effectiveAssigneeId, teamId } },
           select: { role: true },
         })
         if (!assigneeMembership) {
@@ -150,7 +152,7 @@ export async function POST(request: NextRequest) {
           title,
           description,
           teamId,
-          assigneeId: assigneeId || null,
+          assigneeId: effectiveAssigneeId || null,
           status: ticketStatus,
           position: (highestPosition?.position || 0) + 1,
           createdById: session.user.id,
