@@ -60,6 +60,8 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/scripts/database-check.mjs ./scripts/database-check.mjs
 COPY --from=builder /app/scripts/nightly-ticket-review.ts ./scripts/nightly-ticket-review.ts
 COPY --from=builder /app/scripts/assessment-worker.ts ./scripts/assessment-worker.ts
+COPY --from=builder /app/scripts/create-admin.ts ./scripts/create-admin.ts
+COPY --from=builder /app/scripts/ai-check.ts ./scripts/ai-check.ts
 COPY --from=builder /app/src/lib ./src/lib
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 

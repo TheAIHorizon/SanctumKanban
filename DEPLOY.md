@@ -1,130 +1,96 @@
-# Fresh installation of Sanctum Kanban (disposable/demo environment)
+# Install your own SanctumKanban
 
-Maintainers continuing existing work should start with [CONTINUATION.md](CONTINUATION.md). The in-app `/help` pages contain approved role-aware user guides; operational runbooks and `.ops` files are deliberately not served there.
+These instructions are for a **new installation with its own database** on a computer, server or NAS. No access to the maintainer's NAS, CoyoteGPT, accounts or API keys is needed. For an existing installation with student work, follow [OPERATIONS.md](OPERATIONS.md) instead: back up, rehearse changes on a restored copy, and deploy the exact tested GitHub commit.
 
-> **Existing student site? STOP and read [OPERATIONS.md](OPERATIONS.md) first.** The live NAS has student data and private deployment configuration. Do not run this seed-based quick start against it. In-place upgrades require a protected backup, restored-copy rehearsal, explicit outage approval, preserved volume/configuration, and acceptance through the exact public URL. The actual NAS source directory may not be a Git checkout.
+## 1. Prepare
 
-This is a self-contained runbook to deploy Sanctum Kanban with Docker and
-**populated demo data** (5 generated teams, 150 generated tickets, DCWF alignment links; existing base sample data is additional) so
-evaluators can log in and see a fully-populated app immediately.
-
-The app is **Next.js 14 + PostgreSQL (Prisma) + NextAuth**. AI features are
-optional and provider-agnostic (see step 5). No GPU is required on the host —
-the AI runs on a remote OpenAI-compatible endpoint.
-
----
-
-## 0. Requirements on the host
-
-- Docker + Docker Compose v2 (`docker compose`, not `docker-compose`)
-- Ports: **3456** (app) and **5432** (Postgres) available, or remap in `docker-compose.yml`
-- Outbound HTTPS if you enable the remote AI endpoint (optional)
-
-## 1. Clone
+Install Git and Docker with Compose v2. Allow enough disk/memory for a Next.js image build and PostgreSQL; model inference has separate hardware requirements. AI is optional and can run on another machine or an approved hosted service. See [AI setup](docs/ai-setup.md).
 
 ```bash
 git clone https://github.com/TheAIHorizon/SanctumKanban.git
 cd SanctumKanban
-```
-
-## 2. Create the environment file
-
-```bash
 cp .env.example .env
 ```
 
-Then edit `.env` and set at minimum:
+Edit `.env`:
 
-| Var | Value |
-|-----|-------|
-| `POSTGRES_USER` | e.g. `postgres` |
-| `POSTGRES_PASSWORD` | a strong password |
-| `POSTGRES_DB` | `sanctum_kanban` |
-| `NEXTAUTH_SECRET` | run `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | the URL users will reach it at (e.g. `https://kanban.example.org` or `http://<host-ip>:3456`) |
+- Set `NEXTAUTH_SECRET` to a new value generated with `openssl rand -base64 32`.
+- Set `POSTGRES_PASSWORD` to a strong unique password. `openssl rand -hex 24` produces one that is safe in the generated connection URL. If choosing reserved URL characters yourself, account for URL encoding in `DATABASE_URL`.
+- Set `NEXTAUTH_URL` to the exact address people will visit, including HTTPS and port when applicable. For initial local testing use `http://localhost:3456`.
+- Keep `.env` private. Docker assembles `DATABASE_URL` from the database settings; source development needs its own connection string.
 
-> **`NEXTAUTH_URL` matters**: logins/sessions break if it doesn't match the
-> URL evaluators actually visit. For a plain IP/port deploy, use
-> `http://<host-ip>:3456`. Behind a reverse proxy, use the public https URL.
+The base Compose file publishes app port 3456 and database port 5432. For a shared deployment, remove the database `ports` mapping (containers reach `db:5432` internally), or restrict it to loopback if local database tools need it. Do not forward PostgreSQL to the internet. If another application already uses these ports/container names, adjust your new deployment configuration rather than stopping it.
 
-`DATABASE_URL` is **not** needed in `.env` for the Docker path — the app
-container sets it automatically to point at the `db` service. (It's only used
-for running the app outside Docker.)
-
-## 3. Build and start
+## 2. Start the application
 
 ```bash
 docker compose up -d --build
+docker compose ps
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3456/login
 ```
 
-The app container's entrypoint auto-runs `prisma db push` (idempotent schema
-sync) on every start, then launches the server. Wait until:
+Wait for HTTP 200. The entrypoint initializes the schema automatically. The database starts empty; there is no default login unless you deliberately run a demo seed. The entrypoint also synchronizes the schema on later starts, which is why existing-site upgrades require the operations procedure.
+
+## 3. Create your first administrator
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3456/login   # expect 200
+docker compose exec app npm run db:create-admin
 ```
 
-## 4. Initialize data (run once)
+Enter your email, first/last name and a password at the terminal prompts. Password entry is hidden; use at least 12 characters (maximum 72 UTF-8 bytes). Do not add `-T`: this command requires an interactive terminal. It creates only one administrator, refuses if any administrator exists, and never promotes or resets an existing account. Later administrators and students are managed through **Users** after sign-in.
+
+For DCWF tasks, alignment reports and the role catalog:
 
 ```bash
-# DCWF reference data (needed for alignment reports + cohort builder)
 docker compose exec app npm run db:import-dcwf
+```
 
-# Disposable demo only: 5 teams, 150 tickets, DCWF links, admin + demo users
+This imports bundled reference data with idempotent upserts, not student records. The first administrator can now sign in and create a class. Open **Classes**, import a CSV/Canvas roster, optionally choose **One Kanban per student**, and use **Users** to search/filter enrollment. See [roster instructions](docs/student-roster-import.md) and in-app **Help**.
+
+### Optional disposable presentation/demo data
+
+Use a separate, disposable installation for demos. Instead of first-admin setup, import DCWF above and run:
+
+```bash
 docker compose exec app npm run db:seed-demo
 ```
 
-`db:seed-demo` regenerates fixed demo team IDs: it deletes/recreates their tickets and memberships. **It is not safe to rerun on boards containing student work.** It creates an admin if missing and requires the DCWF import above. For a clean non-demo deployment, skip this seed and provision the admin through an approved account-setup procedure.
+This creates five generated teams and 150 generated tickets, plus synthetic accounts. Demo admin: `admin@example.com` / `admin123`; generated students use `password123`. These are public sample credentials. Do not expose a seeded installation containing real records. The demo seed replaces tickets/memberships in its fixed demo teams on rerun; never use it to populate or update a student database. `db:seed` is a separate smaller sample dataset, not a production account-setup command.
 
-### Logins after `db:seed-demo`
+## 4. Configure optional AI
 
-- **Admin**: `admin@example.com` / `admin123`
-- **Demo students**: `<first>.<last>@example.com` / `password123`
-  (e.g. try the Team Echo members; all use `password123`)
-- **Observer**: on the login page, click **"Observe without signing in"** —
-  read-only, no account needed.
+Follow [AI setup](docs/ai-setup.md) for **Ollama, LM Studio/Bionic, Bionic-GPT, OmniRoute, OpenRouter, OpenAI and Anthropic**. Set all three model identifiers; models are not installed automatically. The guide explains provider keys, Docker networking, hardware choices, data handling and synthetic checks.
 
-> Change the admin password immediately for any non-throwaway deployment.
-
-## 5. (Optional) Enable AI features
-
-DCWF task suggestions and Cohort Builder rationale use any OpenAI-compatible
-endpoint. Without it they fall back gracefully (keyword search / template text).
-Add to `.env` and restart (`docker compose up -d`):
+For new installations with assessments enabled:
 
 ```bash
-AI_BASE_URL="https://<your-openai-compatible-host>/v1"   # or /api for Open WebUI
-AI_MODEL="<model-name>"
-AI_API_KEY="<key-if-required>"
-AI_TIMEOUT_MS="90000"    # raise for slow local models
+docker compose -f docker-compose.yml -f docker-compose.assessments.yml up -d --build app assessments
 ```
 
-> Reasoning models (e.g. Qwen "thinking" variants) need a high `max_tokens`;
-> the app already appends `/no_think` for them.
+The separate assessment worker is required for generated tests. Saved history and exports live in PostgreSQL. See [assessment and Canvas guide](docs/course-assessments.md). AI configuration alone does not start the worker or enable nightly reviews.
 
-## 6. Verify
+## 5. Make it available to your intended users
 
-```bash
-docker compose ps                       # both services Up; db healthy
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3456/login   # 200
+Use an HTTPS reverse proxy (for example Caddy, Nginx or Synology's built-in proxy) to the app on port 3456. Set `NEXTAUTH_URL` to that exact HTTPS address and assign a certificate covering its hostname. For Caddy running on the same host, an example is:
+
+```caddyfile
+kanban.example.org {
+    reverse_proxy localhost:3456
+}
 ```
 
-Open `NEXTAUTH_URL` in a browser, log in as admin, and confirm the dashboard
-shows the demo teams and the **Reports** / **Cohort Builder** nav entries.
+Replace the example domain with yours and configure its DNS/access path. A proxy in another container must use a reachable container/service address instead of its own localhost. Verify access from the actual network your users will use.
 
----
+**Board visibility:** the login page offers passwordless **Observe without signing in** access to class-visible boards. Private reports/assessments have additional authorization, but login is not a confidentiality barrier for those boards. For a restricted class deployment, put the entire site behind institution/VPN access controls and review visibility with a test account before adding private material. There is currently no documented environment switch that turns off guest observation.
 
-## Architecture notes for the deployer
+For Synology or another server, match the image to its CPU architecture. An image built on Apple Silicon must be built for `linux/amd64` before using it on an x86 NAS. The repository's operations guide has the preservation and verification steps for upgrades; never copy a new Compose file over a site's private configuration blindly.
 
-- **DS920+ / any amd64 host**: build on the host with `docker compose up -d --build`
-  (Container Manager on Synology can do this from the repo), OR load a
-  prebuilt `linux/amd64` image tarball. Do **not** run an arm64 image on the
-  DS920+.
-- **Reverse proxy**: point it at container port `3456`; set `NEXTAUTH_URL` to
-  the public https URL. Synology's built-in reverse proxy (Control Panel →
-  Login Portal → Advanced → Reverse Proxy) works.
-- **Persistence**: Postgres data lives in the `postgres_data` named volume.
-  `docker compose down` keeps it; `docker compose down -v` **deletes** it.
-- **Secrets**: `.env` is gitignored and must never be committed. Nothing in the
-  repo contains credentials.
-- **Updates to an existing site**: follow [OPERATIONS.md](OPERATIONS.md). Do not blindly pull/rebuild/restart: the entrypoint automatically synchronizes the schema, and a retained volume alone does not prove the data or public access were preserved.
+## 6. Verify and preserve
+
+- Sign in as your new admin; create a disposable class, enroll a test user, create/edit/move a ticket and check class visibility.
+- Verify the exact public URL, certificate and a normal user's login; a local login-page HTTP 200 alone is insufficient.
+- If AI is enabled, use the synthetic connection check and a full invented-work assessment from [AI setup](docs/ai-setup.md).
+- Try a per-team Gantt export and open Help. Validate a Canvas QTI import in your institution before assigning exams.
+- Back up the database and private deployment configuration and test restoring to a separate database. Keep those backups out of Git.
+
+PostgreSQL persists in the `postgres_data` volume. Never use `docker compose down -v` on a database you want to retain. Follow [OPERATIONS.md](OPERATIONS.md) for later updates and [CONTINUATION.md](CONTINUATION.md) for maintainer context.

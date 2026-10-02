@@ -151,7 +151,7 @@ export function TicketAiCoach({ ticketId, title, description, onOpenDcwf }: Tick
           <h3 id="ai-coach-heading" className="text-sm font-semibold">AI Coach</h3>
         </div>
         <p className="text-xs text-muted-foreground">
-          This button sends the current ticket draft and retrieved DCWF reference excerpts to your user-owned CoyoteGPT only when you click Ask AI Coach.
+          This button sends the current ticket draft and retrieved DCWF reference excerpts to the AI service configured by your administrator only when you click Ask AI Coach.
           If your instructor enables nightly review, saved tickets may also be reviewed automatically; see Saved guidance. Separate student profiles and comments are not loaded. Do not put passwords or unnecessary personal information in the draft.
         </p>
         <p className="text-xs text-muted-foreground">
@@ -192,7 +192,7 @@ export function TicketAiCoach({ ticketId, title, description, onOpenDcwf }: Tick
         <div className="space-y-4" aria-live="polite">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={isActualAi ? 'default' : 'secondary'}>
-              {isActualAi ? 'CoyoteGPT response' : 'Keyword fallback'}
+              {isActualAi ? 'AI response' : 'Keyword fallback'}
             </Badge>
             {isActualAi && result.model && (
               <span className="text-xs text-muted-foreground">Model: {boundedText(result.model, 80)}</span>
@@ -204,7 +204,7 @@ export function TicketAiCoach({ ticketId, title, description, onOpenDcwf }: Tick
 
           {!isActualAi && (
             <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-              Keyword fallback was used because an actual CoyoteGPT response was unavailable. These are search matches, not AI coaching.
+              Keyword fallback was used because an actual AI response was unavailable. These are search matches, not AI coaching.
             </p>
           )}
 

@@ -1,4 +1,4 @@
-// Real CoyoteGPT + browser acceptance. Exact local-target guards; synthetic data only.
+// Configured AI + browser acceptance. Exact local-target guards; synthetic data only.
 import assert from 'node:assert/strict'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
@@ -83,14 +83,14 @@ try {
     assert.equal(response.status(), 200)
     data = await response.json()
   }
-  assert.equal(data.usedAi, true, `Real Laguna S response required; fallback reason: ${data.fallbackReason || 'unspecified'}`)
-  assert.equal(data.model, 'laguna-s'); assert.equal(data.mode, 'ai')
+  assert.equal(data.usedAi, true, `Real configured model response required; fallback reason: ${data.fallbackReason || 'unspecified'}`)
+  assert.equal(data.model, process.env.AI_COACH_MODEL || 'laguna-s'); assert.equal(data.mode, 'ai')
   assert.ok(data.guidance.feedback.some(f => ['testing', 'verification'].includes(f.category)), 'Vague installation should prompt for testing/verification evidence')
   await verifySources(data)
-  await page.getByText('CoyoteGPT response', { exact: true }).waitFor()
+  await page.getByText('AI response', { exact: true }).waitFor()
   await page.screenshot({ path: output + '/ai-coach.png' })
   console.log('Synthetic model guidance:', JSON.stringify(data.guidance))
-  pass('real Laguna S coaching, explicit user trigger, test-evidence guidance, canonical task citations')
+  pass('real configured-model coaching, explicit user trigger, test-evidence guidance, canonical task citations')
   const unchanged = await prisma.ticket.findUniqueOrThrow({ where: { id: ticket.id } })
   assert.equal(unchanged.description, ticket.description)
   assert.equal(await prisma.ticketDcwfTask.count({ where: { ticketId: ticket.id } }), 0)
@@ -98,7 +98,7 @@ try {
   await page.getByRole('tab', { name: 'Details', exact: true }).click()
   await page.locator('#edit-description').fill('Draft changed after advice')
   await page.getByRole('tab', { name: 'AI Coach', exact: true }).click()
-  assert.equal(await page.getByText('CoyoteGPT response', { exact: true }).count(), 0)
+  assert.equal(await page.getByText('AI response', { exact: true }).count(), 0)
   pass('editing the draft invalidates prior advice')
   const missing = await post(member, { ticketId: ticket.id, text: 'zzzzzz qqqqqq' })
   assert.equal(missing.status(), 200)

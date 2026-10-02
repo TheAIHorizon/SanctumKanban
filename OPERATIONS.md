@@ -119,4 +119,4 @@ Record: intended commit, actual deployed revision, backup location, preserved da
 
 Use precise language: **“app updated; public access blocked”** if that is the evidence. Do not say “ready for the GAs” until the intended path is accepted. Do not attribute every browser/network symptom to the most recently noticed certificate issue.
 
-Keep deployment records in `.ops/` or another protected operations store. Publish generic instructions and sanitized test evidence, not private deployment metadata or student data. Update this runbook when a new procedure is proven. See [DEPLOY.md](DEPLOY.md) only for a fresh disposable installation, not as an in-place live upgrade shortcut.
+Keep deployment records in `.ops/` or another protected operations store. Publish generic instructions and sanitized test evidence, not private deployment metadata or student data. Update this runbook when a new procedure is proven. See [DEPLOY.md](DEPLOY.md) only for a fresh installation with its own database, not as an in-place live upgrade shortcut.

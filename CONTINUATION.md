@@ -1,5 +1,14 @@
 # SanctumKanban — continuation guide for the next agent
 
+## Public installation and AI setup (October 2, 2026)
+
+New adopters start at [DEPLOY.md](DEPLOY.md) and [docs/ai-setup.md](docs/ai-setup.md), not the private NAS inventory. AI is local-first with operator-selected hosted providers/gateways allowed; see the updated agent policy. Set general, coach and assessment models explicitly because their legacy defaults differ. Runtime model defaults and the live site's provider have not been changed by this documentation release.
+
+`npm run db:create-admin` is an interactive first-admin bootstrap; hidden password entry, no sample data, serializable create, refuses existing admins or duplicate email. `npm run ai:check` uses synthetic prompts with the actual Chat Completions client and all three model settings; no database access or raw provider output. The Docker image includes both tools. Help and UI labels now refer to the configured AI service rather than one installation's provider.
+
+Validation: 271 automated tests; type checking; lint with the three pre-existing hook warnings; production Docker build; isolated PostgreSQL first-admin creation and refusal on rerun; synthetic HTTP provider success/401 checks; Compose environment propagation and relative documentation links. Provider examples were checked against primary documentation, not live paid accounts. No student data was sent to new providers. This is a GitHub/setup update; it is not a record of NAS deployment.
+
+
 ## Start here, every time
 
 1. Read this file and [OPERATIONS.md](OPERATIONS.md).

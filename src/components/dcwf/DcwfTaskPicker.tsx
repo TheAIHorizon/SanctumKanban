@@ -354,7 +354,7 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
           <p className="text-xs text-muted-foreground" aria-live="polite">
             {suggestMode === 'fallback'
               ? 'Keyword fallback — no validated AI selection was available.'
-              : 'CoyoteGPT selected these suggestions.'}
+              : 'The configured AI selected these suggestions.'}
           </p>
         )}
 

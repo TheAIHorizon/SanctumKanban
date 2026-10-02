@@ -106,7 +106,7 @@ test('guides preserve the required behavior and safety distinctions', () => {
   assert.match(bySlug.gantt, /actual/i)
   assert.match(bySlug.gantt, /UTC/)
   assert.match(bySlug.gantt, /unknown/i)
-  assert.match(bySlug['ai-guidance'], /Laguna S/)
+  assert.match(bySlug['ai-guidance'], /configured AI/)
   assert.match(bySlug['ai-guidance'], /manual/i)
   assert.match(bySlug['ai-guidance'], /nightly/i)
   assert.match(bySlug['ai-guidance'], /fallback/i)

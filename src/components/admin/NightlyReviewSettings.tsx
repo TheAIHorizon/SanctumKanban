@@ -138,7 +138,7 @@ export function NightlyReviewSettings({ classId, isArchived }: NightlyReviewSett
   return (
     <section className="mt-3 space-y-3 border-t pt-3" aria-label="Nightly AI review settings" data-class-id={classId}>
       <div className="flex items-center gap-2"><Clock className="h-4 w-4" /><h4 className="text-sm font-semibold">Nightly AI review</h4></div>
-      <p className="text-xs text-muted-foreground">Enabling this permits automatic CoyoteGPT processing of saved tickets at the configured local hour. A separate background runner must be operating; this page only stores settings and queues requests.</p>
+      <p className="text-xs text-muted-foreground">Enabling this permits automatic processing by the configured AI service of saved tickets at the configured local hour. A separate background runner must be operating; this page only stores settings and queues requests.</p>
       {isArchived && <p className="text-xs font-medium text-muted-foreground">Archived classes are read-only. Restore this class to change settings or queue a review.</p>}
       {error && <div role="alert" className="flex gap-2 text-xs text-destructive"><AlertCircle className="h-3.5 w-3.5" />{error}</div>}
       {notice && <p aria-live="polite" className="text-xs text-emerald-700 dark:text-emerald-400">{notice}</p>}

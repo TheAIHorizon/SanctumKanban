@@ -28,7 +28,7 @@ test('AI Coach only sends draft text after a user action and guards stale reques
 test('AI Coach explains privacy, advisory limits, fallback mode, and bounded evidence', () => {
   const source = coachSource()
 
-  assert.match(source, /user-owned CoyoteGPT/i)
+  assert.match(source, /AI service configured by your administrator/i)
   assert.match(source, /advisory, not a grade/i)
   assert.match(source, /Missing evidence does not mean the work was not done/i)
   assert.match(source, /mode === 'ai'/)

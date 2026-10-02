@@ -33,11 +33,14 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       PORT: 3456
       # Provider-agnostic AI (optional). From a container, a host Ollama is at
-      # host.docker.internal. Falls back to keyword search when unset/unreachable.
+      # host.docker.internal (see docs/ai-setup.md for Linux and workers).
+      # Set all three model names explicitly for a new installation.
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_MODEL: ${AI_MODEL:-}
       AI_COACH_MODEL: ${AI_COACH_MODEL:-laguna-s}
       AI_API_KEY: ${AI_API_KEY:-}
+      AI_ASSESSMENT_MODEL: ${AI_ASSESSMENT_MODEL:-nemotron-3-super}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-90000}
     ports:
       - "3456:3456"
 

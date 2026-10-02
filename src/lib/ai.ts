@@ -5,9 +5,11 @@
  * same code points at any OpenAI-compatible endpoint:
  *   - Ollama:     AI_BASE_URL=http://localhost:11434/v1   AI_MODEL=qwen3.8:27b
  *   - OpenWebUI:  AI_BASE_URL=http://<host>/api            AI_MODEL=<served-model>
- *   - CoyoteGPT:  user-owned OpenWebUI endpoint; coaching uses AI_COACH_MODEL=laguna-s.
+ *   - Hosted providers/gateways: explicitly configured by the operator.
+ * See docs/ai-setup.md for model overrides, keys and compatibility limits.
  *
- * Defaults to local Ollama. AI features degrade gracefully when unreachable.
+ * Defaults to local Ollama. Coaching can fall back; assessments fail explicitly.
+ * External endpoints receive feature input; keys must stay server-side.
  */
 
 const AI_BASE_URL = process.env.AI_BASE_URL || 'http://localhost:11434/v1'

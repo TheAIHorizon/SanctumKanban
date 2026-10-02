@@ -15,6 +15,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:create-admin": "tsx scripts/create-admin.ts",
+    "ai:check": "tsx scripts/ai-check.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-demo": "tsx prisma/seed-demo-teams.ts",
     "db:import-dcwf": "tsx prisma/import-dcwf.ts",

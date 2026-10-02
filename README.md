@@ -1,5 +1,7 @@
 # Sanctum Kanban
 
+**Installing your own copy? Start with [DEPLOY.md](DEPLOY.md) and [AI setup](docs/ai-setup.md).** No access to the maintainer’s NAS or CoyoteGPT is required. Use local models, a shared model server, or an explicitly chosen hosted provider; the core Kanban works without AI.
+
 **New agent or maintainer? Start with [CONTINUATION.md](CONTINUATION.md), then [OPERATIONS.md](OPERATIONS.md).** These cover architecture, feature invariants, local tests, private operational inventory, and safe live-site updates.
 
 > **LIVE SITE OPERATORS:** Read [OPERATIONS.md](OPERATIONS.md) before making changes. This installation is used by students. Preserve its database and verify the exact shared URL; local tests and a GitHub push do not establish live availability. Private target details are in the gitignored `.ops/site.local.json` file. The fresh-install/demo instructions below are not an in-place production update procedure.
@@ -17,13 +19,19 @@ A self-hosted multi-team kanban application with announcements, drag-and-drop ti
 | **[SanctumWriter](https://github.com/TheAIHorizon/SanctumWriter)** | AI-powered markdown editor for writers |
 | **SanctumKanban** | Multi-team project management (this app) |
 
-**Core Principles**: Privacy first • Data sovereignty • Local AI • Self-hosted • No telemetry
+**Core Principles**: Privacy first • Data sovereignty • Local-first AI • Self-hosted • No application telemetry
+
+External AI is opt-in configuration: feature inputs go to the endpoint you select. A self-hosted Kanban or gateway does not make hosted model processing local. The [AI guide](docs/ai-setup.md) explains what is sent, provider compatibility, and verification.
 
 ## Research offshoot planning
 
 The proposed independent SanctumResearch application is described in the [research blueprint](docs/research/BLUEPRINT.md) and [agent handoff](docs/research/AGENT-HANDOFF.md). These are planning documents; this repository continues to run the course Kanban.
 
 ## Features
+
+- **Course workspaces:** CSV/Excel and Canvas roster import, team boards or one board per student, searchable/sortable Users with class filters.
+- **Evidence and assessment:** DCWF alignment, optional coaching, saved personalized practice/exam versions, class/student assessment library and Canvas QTI exports.
+- **Presentation:** team-by-team Detailed/Gantt views, date-range HTML/PDF exports in landscape Letter or Tabloid.
 
 ### User and GA documentation
 
@@ -63,7 +71,7 @@ The application header's **Help** link opens `/help`. Signed-in users (including
 - **Role-Based Access**: Admin, Team Lead, Member, and read-only **Observer** roles (see [Permissions](#permissions))
 - **Observer mode**: a passwordless, read-only guest view of all team boards — no account needed (see [Permissions](#permissions))
 - **DCWF Alignment** (see below): link tickets to DoD Cyber Workforce Framework tasks, add per-task reflections, and get per-student and per-team work-role alignment reports with AI-assisted task suggestions.
-- **Cohort Builder** (admin): import a placement survey and let a deterministic solver + local AI propose balanced student teams, edit them on an interactive board, then provision real accounts (see [Cohort Builder](#cohort-builder)).
+- **Cohort Builder** (admin): import a placement survey and let a deterministic solver + optional AI propose balanced student teams, edit them on an interactive board, then provision real accounts (see [Cohort Builder](#cohort-builder)).
 - **Real-Time Updates (planned, not implemented)**: The app currently relies on `router.refresh()` after mutations and manual page reload to see other users' changes. An earlier Socket.IO prototype existed but was never wired up (client hook was never called, and the server ran with no authentication), so it has been removed. Live collaboration is on the roadmap.
 - **Self-Hosted**: Deploy on your own infrastructure with Docker
 
@@ -142,9 +150,9 @@ Four roles, enforced by a single authorization module (`src/lib/permissions.ts`)
 
 1. **Import** a placement-survey CSV (Google Forms export). The importer maps columns by header keyword, so your form stays editable; the legacy survey format is also supported. A ready-to-use question set (DCWF-aligned) is included.
 2. **Choose a principle** — Balanced/Parity (default), Coverage, Mentorship, Affinity, Specialization, or Schedule-first — or tune the weight **sliders** directly. A deterministic solver (reproducible; honors mutual partner requests and ≥2 shared meeting days) proposes teams.
-3. **Rationale + watch-list** — local AI writes each team's "why these three"; a rule-based watch-list flags risks (scarce skills, no OS anchor, schedule conflicts). AI is optional and degrades gracefully to templates.
+3. **Rationale + watch-list** — the configured AI writes each team's "why these three"; a rule-based watch-list flags risks (scarce skills, no OS anchor, schedule conflicts). AI is optional and degrades gracefully to templates.
 4. **Review interactively** — drag students between teams; coverage, anchor, and shared-day metrics re-check live. Set each team's lead.
-5. **Provision** — one click creates real Teams, student accounts (temporary password, changed on first login), and memberships.
+5. **Provision** — one click creates real Teams, student accounts (temporary password; ask students to change it in Profile), and memberships.
 
 AI uses the same provider-agnostic config as DCWF suggestions (`AI_BASE_URL` / `AI_MODEL` / `AI_API_KEY`) — point it at a local Ollama, an OpenWebUI/LM-Studio server, or any OpenAI-compatible endpoint.
 
@@ -159,161 +167,41 @@ AI uses the same provider-agnostic config as DCWF suggestions (`AI_BASE_URL` / `
 
 ## Quick Start
 
-### Prerequisites
+For a new Docker installation, follow [DEPLOY.md](DEPLOY.md): clone the repo, copy `.env.example`, choose your own secrets, start the app, and run the interactive `db:create-admin` command. Demo seeds are optional and belong only in disposable databases. The guide also covers HTTPS, guest board visibility, DCWF import, workers and verification.
 
-- Node.js 18+ or Docker
-- PostgreSQL 14+ (or use Docker)
+**Choose your AI:** [docs/ai-setup.md](docs/ai-setup.md) includes Ollama, LM Studio/Bionic, Bionic-GPT, OmniRoute, OpenRouter, OpenAI API keys and Anthropic options. No GPU is required in the Kanban host when another server/provider performs inference. Set `AI_MODEL`, `AI_COACH_MODEL` and `AI_ASSESSMENT_MODEL` explicitly; assessments require the separate worker.
 
-### Development Setup
+### Source development
 
-1. **Clone and install dependencies**:
-   ```bash
-   cd sanctum-kanban
-   npm install
-   ```
-
-2. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   ```
-
-   Edit `.env` and set:
-   - `DATABASE_URL`: Your PostgreSQL connection string
-   - `NEXTAUTH_SECRET`: Generate with `openssl rand -base64 32`
-   - `NEXTAUTH_URL`: Your app URL (http://localhost:3456 for development)
-
-3. **Start the database** (if using Docker):
-   ```bash
-   docker-compose -f docker-compose.dev.yml up -d
-   ```
-
-4. **Initialize the database**:
-   ```bash
-   npm run db:push
-   npm run db:seed
-   ```
-
-5. **Start the development server**:
-   ```bash
-   npm run dev
-   ```
-
-6. **Open** http://localhost:3456 and login with:
-   - Admin: `admin@example.com` / `admin123`
-
-### Docker Deployment Options
-
-#### Option 1: Full Stack (App + Database)
-
-Deploy both the app and PostgreSQL in containers:
+Use Node.js 20 (matching the Docker image), npm and PostgreSQL. For an isolated local checkout:
 
 ```bash
-# Create environment file
+git clone https://github.com/TheAIHorizon/SanctumKanban.git
+cd SanctumKanban
+npm ci
 cp .env.example .env
-# Edit .env — set NEXTAUTH_SECRET (openssl rand -base64 32) and POSTGRES_PASSWORD
-
-# Build and start both containers
-docker compose up -d --build
 ```
 
-That's it. On startup the app container automatically syncs the database
-schema (`prisma db push`), so the app is ready at
-[http://localhost:3456](http://localhost:3456) with an **empty** database —
-no manual init step required.
-
-**Optional — load demo/sample data** (creates an admin + sample teams):
+Set `NEXTAUTH_SECRET`, `NEXTAUTH_URL=http://localhost:3456`, and `DATABASE_URL` in `.env`. The development Compose file uses `postgres` / `postgres` on localhost:5432 with database `sanctum_kanban`; it is for disposable local development only. Use a different port/database if you already have PostgreSQL running.
 
 ```bash
-docker compose exec app npm run db:seed
-```
-
-> The seed creates `admin@example.com` / `admin123`. Change these immediately
-> for any non-local deployment.
-
-**To use the DCWF features** (alignment reports, cohort builder's role catalog),
-import the bundled DCWF reference data once:
-
-```bash
-docker compose exec app npm run db:import-dcwf
-```
-
-This loads 7 elements, 76 work roles, 3037 KSATs and their mappings (idempotent —
-safe to re-run). A complete first-run init is therefore:
-
-```bash
-docker compose up -d --build          # schema auto-syncs on start
-docker compose exec app npm run db:seed          # admin + sample data
-docker compose exec app npm run db:import-dcwf   # DCWF reference data
-```
-
-#### Deploying to a Synology NAS (DS920+ / Container Manager)
-
-The DS920+ is **x86_64 (amd64)**. If you build the image on an Apple-Silicon
-Mac (arm64), build for the NAS architecture explicitly, then move the image
-over — no registry required:
-
-```bash
-# On your Mac: build a linux/amd64 image and save it to a tarball
-docker buildx build --platform linux/amd64 -t sanctumkanban-app:amd64 --load .
-docker save sanctumkanban-app:amd64 | gzip > sanctumkanban-amd64.tar.gz
-```
-
-Then in **Container Manager** on the NAS:
-1. **Image → Add → Add from file** and select `sanctumkanban-amd64.tar.gz`.
-2. Create a PostgreSQL 16 container (or use the bundled `docker-compose.yml` via
-   **Project → Create → upload docker-compose.yml**; set the env vars below).
-3. Set the app container env: `DATABASE_URL`, `NEXTAUTH_URL` (your NAS URL),
-   `NEXTAUTH_SECRET`, and optionally `AI_BASE_URL` / `AI_MODEL` / `AI_API_KEY`.
-4. Map port `3456`, start it, then run the two init commands above from the
-   NAS shell (`sudo docker exec …`) or Container Manager's terminal.
-
-> Alternatively, clone the repo on the NAS and run `docker compose up -d --build`
-> directly — Container Manager builds the amd64 image locally, so no cross-build
-> step is needed. The buildx/tarball route is only for building on a different
-> architecture than the NAS.
-
-#### Option 2: App Container Only (Existing Database)
-
-If you already have PostgreSQL running (e.g., from development):
-
-```bash
-# Build and start only the app container
-docker-compose -f docker-compose.app.yml up -d --build
-```
-
-This connects to your existing database via `host.docker.internal:5432`.
-
-#### Option 3: Development with Hot Reload
-
-Run the database in Docker, app locally for hot reloading:
-
-```bash
-# Start database only
-docker-compose -f docker-compose.dev.yml up -d
-
-# Run app locally
+docker compose -f docker-compose.dev.yml up -d
+npm run db:push
+npm run db:create-admin
+npm run db:import-dcwf
 npm run dev
 ```
 
-### Docker Compose Files
+Open http://localhost:3456 and sign in with the credentials you just created. For sample content use a separate demo database and the [demo instructions](DEPLOY.md#optional-disposable-presentationdemo-data). Do not seed a live class.
 
-| File | Purpose |
-|------|---------|
-| `docker-compose.yml` | Full production stack (app + db) |
-| `docker-compose.app.yml` | App container only (uses existing db) |
-| `docker-compose.dev.yml` | Database only (for local development) |
+| Compose file | Purpose |
+|---|---|
+| `docker-compose.yml` | App + database; optional nightly-review profile |
+| `docker-compose.assessments.yml` | Assessment worker, combined with the base file |
+| `docker-compose.dev.yml` | Disposable development database only |
+| `docker-compose.app.yml` | Legacy app-only example with an existing host database; customize its database, URL and AI environment before use |
 
-**Access** your app at http://localhost:3456
-
-### Production with Reverse Proxy (Recommended)
-
-For HTTPS, use a reverse proxy like Nginx or Caddy. Example Caddy configuration:
-
-```caddyfile
-your-domain.com {
-    reverse_proxy localhost:3456
-}
-```
+Existing deployments use [OPERATIONS.md](OPERATIONS.md), not the fresh-install commands. Test → commit → push → verify remote commit → deploy that exact revision. Keep student data, keys, private configuration and backups out of Git.
 
 ## User Roles
 
@@ -396,8 +284,11 @@ sanctum-kanban/
 | `POSTGRES_USER` | DB username (Docker) | Docker only |
 | `POSTGRES_PASSWORD` | DB password (Docker) | Docker only |
 | `POSTGRES_DB` | Database name (Docker) | Docker only |
-| `AI_BASE_URL` | OpenAI-compatible endpoint for DCWF task suggestions (e.g. `http://localhost:11434/v1` for Ollama, an OpenWebUI URL, or a hosted API). Defaults to local Ollama. | No |
-| `AI_MODEL` | Model name for suggestions (e.g. `qwen3.8:27b`) | No |
+| `AI_BASE_URL` | Shared OpenAI-compatible Chat Completions base URL (e.g. `http://localhost:11434/v1` for Ollama, an OpenWebUI URL, or a hosted API). Defaults to local Ollama. | No |
+| `AI_MODEL` | General AI/cohort rationale model identifier | For AI |
+| `AI_COACH_MODEL` | Manual coaching + nightly-review model identifier | For coaching |
+| `AI_ASSESSMENT_MODEL` | Assessment worker model identifier (independent of `AI_MODEL`) | For assessments |
+| `AI_TIMEOUT_MS` | Default AI timeout; feature-specific deadlines take precedence | No |
 | `AI_API_KEY` | Bearer token, only if your AI endpoint requires one | No |
 
 ## Troubleshooting

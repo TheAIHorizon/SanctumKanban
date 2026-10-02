@@ -21,15 +21,15 @@ SanctumKanban is part of the **Sanctum Suite** — a collection of privacy-first
 
 ### Core Principles (MUST follow)
 
-1. **Privacy First** - All processing happens locally
-2. **Data Sovereignty** - Nothing leaves the user's machines
-3. **Local AI** - Use Ollama/LM Studio, NOT cloud APIs (OpenAI, Anthropic, etc.)
+1. **Privacy First** - Local inference is the default; externally hosted AI requires explicit operator choice.
+2. **Data Sovereignty** - Keep application data self-hosted; document the feature inputs sent to any configured external AI provider.
+3. **Local-first AI** - Support Ollama/LM Studio and explicitly configured compatible hosted providers/gateways. Never silently switch to cloud inference.
 4. **Self-Hosted** - If a server is involved, user owns it
-5. **No Telemetry** - No external data sharing
+5. **No Telemetry** - No application telemetry. Operator-configured AI requests are separate, deliberate data transfers.
 
 ### Future AI Integration
 
-When adding AI features, connect to **Ollama** (localhost:11434) like the other Sanctum apps do. Do NOT add OpenAI/Anthropic/cloud API integrations.
+Keep **Ollama** (localhost:11434) as the default endpoint. The operator may explicitly choose hosted models or gateways, including OpenAI, OpenRouter or Anthropic-compatible routes. Follow [docs/ai-setup.md](docs/ai-setup.md): preserve the request contract, state compatibility limits, keep keys server-side, and use synthetic evidence for provider testing. Do not send student data to a new provider merely to test it.
 
 ## Project Overview
 

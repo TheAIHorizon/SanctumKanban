@@ -57,7 +57,7 @@ export const HELP_GUIDES = [
     audience: 'admin',
     sections: [
       { heading: 'Prepare an exam', blocks: [
-        { type: 'paragraph', text: 'In Assessments, choose a course, enrolled student, date range and Instructor exam draft. Optionally paste reference excerpts or expected procedures. Links are not fetched. The user-owned AI endpoint receives the selected evidence and supplied references to produce a new saved version. No ticket content is changed.' },
+        { type: 'paragraph', text: 'In Assessments, choose a course, enrolled student, date range and Instructor exam draft. Optionally paste reference excerpts or expected procedures. Links are not fetched. The configured AI endpoint receives the selected evidence and supplied references to produce a new saved version. No ticket content is changed.' },
       ] },
       { heading: 'Edit or accept the default', blocks: [
         { type: 'paragraph', text: 'Inspect the evidence snapshot and question sources, edit any question, options, correct answer or explanation, and save your edits. You may also accept the generated default directly. Accept exam freezes that version and records whether it was edited or accepted unchanged. AI correctness is not guaranteed by acceptance.' },
@@ -211,13 +211,17 @@ export const HELP_GUIDES = [
   {
     slug: 'ai-guidance',
     title: 'AI guidance',
-    description: 'Use Laguna S coaching and saved nightly reviews as advisory, grounded assistance.',
+    description: 'Use the configured AI for coaching and saved nightly reviews as advisory, grounded assistance.',
     audience: 'authenticated',
     sections: [
       {
+        heading: 'Where your information goes',
+        blocks: [{ type: 'paragraph', text: 'Your administrator chooses the model service for this installation. It may run locally, on an institutional server, or through a hosted provider. Coaching sends the current ticket draft and retrieved task excerpts; assessments send selected work and any instructor references. A hosted provider processes those inputs outside this server. Ask your administrator which service is configured before entering sensitive material. The repository AI setup guide covers local models, gateways and provider keys.' }],
+      },
+      {
         heading: 'Manual AI Coach',
         blocks: [
-          { type: 'paragraph', text: 'In an editable saved ticket, opening the AI Coach tab sends nothing. Select Ask AI Coach to request Laguna S guidance for the current title, description, and retrieved DCWF Task excerpts.' },
+          { type: 'paragraph', text: 'In an editable saved ticket, opening the AI Coach tab sends nothing. Select Ask AI Coach to request guidance from the configured AI service for the current title, description, and retrieved DCWF Task excerpts.' },
           { type: 'bullets', items: [
             'The coach can ask how work was tested and what observable result verified it.',
             'Changing the draft clears old advice so guidance from one draft is not mistaken for another.',
@@ -239,7 +243,7 @@ export const HELP_GUIDES = [
       {
         heading: 'Advisory boundaries',
         blocks: [
-          { type: 'paragraph', text: 'Laguna S is an adviser, not a verifier and not a grade. Its suggestions can be incomplete, and official task wording comes only from eligible imported records.' },
+          { type: 'paragraph', text: 'The configured AI is an adviser, not a verifier and not a grade. Its suggestions can be incomplete, and official task wording comes only from eligible imported records.' },
           { type: 'bullets', items: [
             'Keyword fallback is clearly distinguished from a successful model response.',
             'No relevant result should lead to abstention or a request for clearer technical detail.',
