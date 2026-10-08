@@ -108,6 +108,7 @@ export function EditTicketDialog({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('details')
+  const [focusDcwfSearch, setFocusDcwfSearch] = useState(false)
 
   // Comments state
   const [comments, setComments] = useState<Comment[]>([])
@@ -129,6 +130,7 @@ export function EditTicketDialog({
       setError('')
       setNewComment('')
       setActiveTab('details')
+      setFocusDcwfSearch(false)
     }
   }, [open, ticket])
 
@@ -259,11 +261,13 @@ export function EditTicketDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs value={activeTab} onValueChange={(tab) => {
+          setFocusDcwfSearch(false)
+          setActiveTab(tab)
+        }} className="flex-1 overflow-hidden flex flex-col">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="coach">AI Coach</TabsTrigger>
-            <TabsTrigger value="dcwf">DCWF</TabsTrigger>
             <TabsTrigger value="comments">
               Comments {comments.length > 0 && `(${comments.length})`}
             </TabsTrigger>
@@ -288,6 +292,17 @@ export function EditTicketDialog({
                   disabled={loading}
                 />
               </div>
+
+              <section aria-label="DCWF task alignment" className="rounded-md border p-3">
+                <DcwfTaskPicker
+                  ticketId={ticket.id}
+                  suggestText={[title, description].filter(Boolean).join('. ')}
+                  autoFocusSearch={focusDcwfSearch}
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Task links and reflection notes save immediately.
+                </p>
+              </section>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-description">Description</Label>
@@ -434,17 +449,13 @@ export function EditTicketDialog({
                 ticketId={ticket.id}
                 title={title}
                 description={description}
-                onOpenDcwf={() => setActiveTab('dcwf')}
+                onOpenDcwf={() => {
+                  setFocusDcwfSearch(true)
+                  setActiveTab('details')
+                }}
               />
               <SavedTicketGuidance ticketId={ticket.id} />
             </div>
-          </TabsContent>
-
-          <TabsContent value="dcwf" className="flex-1 overflow-auto p-1">
-            <DcwfTaskPicker
-              ticketId={ticket.id}
-              suggestText={[title, description].filter(Boolean).join('. ')}
-            />
           </TabsContent>
 
           <TabsContent value="comments" className="flex-1 overflow-hidden flex flex-col">

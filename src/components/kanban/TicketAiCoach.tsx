@@ -249,7 +249,7 @@ export function TicketAiCoach({ ticketId, title, description, onOpenDcwf }: Tick
               <div className="flex items-center justify-between gap-3">
                 <h4 className="text-sm font-medium">Possible DCWF evidence</h4>
                 <Button type="button" size="sm" variant="outline" onClick={onOpenDcwf}>
-                  Review and link in DCWF
+                  Review and link in Details
                   <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               </div>

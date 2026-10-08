@@ -11,7 +11,7 @@ test('AI Coach is an explicit editable-ticket tab using the current draft', () =
 
   assert.match(edit, /TabsTrigger value="coach">AI Coach<\/TabsTrigger>/)
   assert.match(edit, /<TicketAiCoach[\s\S]*ticketId=\{ticket\.id\}[\s\S]*title=\{title\}[\s\S]*description=\{description\}/)
-  assert.match(edit, /onOpenDcwf=\{\(\) => setActiveTab\('dcwf'\)\}/)
+  assert.match(edit, /onOpenDcwf=\{\(\) => \{\s+setFocusDcwfSearch\(true\)\s+setActiveTab\('details'\)/)
 })
 
 test('AI Coach only sends draft text after a user action and guards stale requests', () => {

@@ -51,11 +51,12 @@ interface DcwfTaskPickerProps {
   ticketId: string
   // Optional seed text (ticket title/description) for AI suggestions
   suggestText?: string
+  autoFocusSearch?: boolean
 }
 
 // Renders the linked-task list + a search/AI picker. Persists directly via the
 // ticket DCWF-task API so it works whenever a ticket already exists (Edit dialog).
-export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
+export function DcwfTaskPicker({ ticketId, suggestText, autoFocusSearch = false }: DcwfTaskPickerProps) {
   const [links, setLinks] = useState<TaskLink[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -309,6 +310,11 @@ export function DcwfTaskPicker({ ticketId, suggestText }: DcwfTaskPickerProps) {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
+              autoFocus={autoFocusSearch}
+              onKeyDown={(event) => {
+                // Search is debounced; Enter must not submit the surrounding ticket form.
+                if (event.key === 'Enter') event.preventDefault()
+              }}
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value)

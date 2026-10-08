@@ -177,7 +177,7 @@ export const HELP_GUIDES = [
       {
         heading: 'Document and collaborate',
         blocks: [
-          { type: 'paragraph', text: 'Use comments for durable handoffs and the DCWF tab for framework Tasks you actually performed. A concise first-person reflection should explain your contribution.' },
+          { type: 'paragraph', text: 'Use comments for durable handoffs. In an editable saved ticket, find DCWF Tasks directly below the title in Details. Search and select framework Tasks related to your work, or use Suggest. Add a concise first-person reflection explaining your contribution. Task links and reflection notes save immediately; use Save Changes for the other ticket fields.' },
           { type: 'bullets', items: [
             'Do not place secrets, private keys, tokens, or restricted personal information in ticket text.',
             'Read-only viewers can inspect details but do not receive edit, comment, or drag controls.',
