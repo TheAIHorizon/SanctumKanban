@@ -9,6 +9,7 @@ import {
 
 const nonAdminRoles: HelpRole[] = ['MEMBER', 'TEAM_LEAD', 'OBSERVER']
 const publicSlugs = [
+  'student-work-reports',
   'requests-and-bugs',
   'exports-and-assessments',
   'user-manual',
@@ -56,7 +57,7 @@ test('guide lookup is a strict slug allowlist and rejects path-like input', () =
 })
 
 test('catalogue is typed, complete, meaningful, and contains only renderable text blocks', () => {
-  assert.equal(HELP_GUIDES.length, 10)
+  assert.equal(HELP_GUIDES.length, 11)
   assert.deepEqual(HELP_GUIDES.map((guide) => guide.slug).sort(), [...publicSlugs, ...adminSlugs].sort())
 
   for (const guide of HELP_GUIDES) {

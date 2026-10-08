@@ -1,5 +1,13 @@
 # SanctumKanban — continuation guide for the next agent
 
+## Assessment usability and work-role reports (October 7, 2026)
+
+Assessment library entries explicitly open and focus their questions, including after loading. Accept/print/export actions appear before the questions; single-quiz exports expose Canvas type and points. Failed-only deletion is instructor-only, either one attempt or a specific active class, with confirmation; successful/running versions and source student work are preserved. See [the assessment guide](docs/course-assessments.md).
+
+Student reports and HTML exports group distinct DCWF tasks by work role, descending task count, with ticket statuses and notes. Assigned-ticket links now count alongside student-authored links in individual reports/alignment; duplicates do not inflate counts. Team coverage retains its contributor-based attribution. Technical/policy focus uses local task-wording rules and is descriptive, not a grade. No database schema, AI provider, or student records are changed by the release. The requirements-document importer remains a proposal and is not included.
+
+Validation: 274 unit tests; guarded assessment and report browser/API checks with synthetic records; TypeScript; lint with existing warnings. Report tests cover role ordering, instructor-linked assigned tasks, filters, access restrictions and escaped HTML exports. Release/deployment outcome belongs in the private operations inventory.
+
 ## Public installation and AI setup (October 2, 2026)
 
 New adopters start at [DEPLOY.md](DEPLOY.md) and [docs/ai-setup.md](docs/ai-setup.md), not the private NAS inventory. AI is local-first with operator-selected hosted providers/gateways allowed; see the updated agent policy. Set general, coach and assessment models explicitly because their legacy defaults differ. Runtime model defaults and the live site's provider have not been changed by this documentation release.

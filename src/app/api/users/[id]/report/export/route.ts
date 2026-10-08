@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { computeAlignment } from '@/lib/dcwf-alignment'
+import { buildWorkRoleReport, WORK_REPORT_METHOD } from '@/lib/report-work-roles'
 
 const ELEMENT_COLORS: Record<string, string> = {
   'IT (Cyberspace)': '#3b82f6',
@@ -70,12 +71,12 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const taskLinks = await prisma.ticketDcwfTask.findMany({
-      where: { createdById: targetId },
+      where: { OR: [{ createdById: targetId }, { ticket: { assigneeId: targetId } }] },
       orderBy: { createdAt: 'desc' },
       select: {
         note: true,
         createdAt: true,
-        ticket: { select: { title: true, team: { select: { name: true } } } },
+        ticket: { select: { id: true, title: true, status: true, team: { select: { name: true } } } },
         ksat: {
           select: {
             ksatId: true,
@@ -89,6 +90,10 @@ export async function GET(
     })
 
     const alignment = await computeAlignment({ userId: targetId, inScopeOnly })
+
+    const work = buildWorkRoleReport(taskLinks, inScopeOnly)
+    const groupedTasks = work.roles.map(role => `<section class="card"><h2 class="title">${esc(role.code)} ${esc(role.title)} — ${role.taskCount} tasks</h2><p class="muted">${role.completedTaskCount} tasks with completed work</p>${role.tasks.map(task => `<div class="task"><b>${esc(task.id)}</b> ${esc(task.description)}<p class="muted">${esc(task.mapping)} · ${esc(task.focus)}</p>${task.tickets.map(ticket => `<div class="task-meta">${esc(ticket.title)} · ${esc(ticket.team)} · ${esc(ticket.status)}</div>${ticket.notes.map(note => `<p class="note">${esc(note)}</p>`).join('')}`).join('')}</div>`).join('')}</section>`).join('')
+    const workSummary = `<section class="card"><h2 class="title">Work focus and completion</h2><p>${work.focus.map(f => `${esc(f.label)}: ${f.count}`).join(' · ')}</p><p>${work.tickets.total} linked tickets: ${work.tickets.done} Done, ${work.tickets.doing} Doing, ${work.tickets.backlog} Backlog. ${work.tickets.withNotes} have task notes.</p><p class="muted">${esc(WORK_REPORT_METHOD)}</p></section>`
 
     const initials = (user.firstName[0] + user.lastName[0]).toUpperCase()
     const top = alignment.roles[0]
@@ -174,6 +179,9 @@ export async function GET(
     </div>
   </div>
 
+  ${workSummary}
+  <h2>Work roles and tasks</h2>
+  ${groupedTasks || '<p>No tasks match the selected role filter.</p>'}
   <div class="card">
     <div class="title">🎯 Work-Role Alignment</div>
     <div class="muted" style="margin-bottom:14px">Based on ${alignment.totalTasksLogged} logged DCWF task${alignment.totalTasksLogged === 1 ? '' : 's'}.${top ? ` Strongest fit: <b>${esc(top.code)} ${esc(top.title)}</b> (${top.percent.toFixed(0)}%).` : ''}</div>
@@ -194,6 +202,7 @@ export async function GET(
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'private, no-store',
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     })

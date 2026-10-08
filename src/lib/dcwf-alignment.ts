@@ -135,11 +135,12 @@ export interface AlignmentQuery {
  *
  * "The user's logged tasks" = TicketDcwfTask links they created OR links on
  * tickets assigned to them (so a lead logging on a member's behalf still counts
- * toward the member when they're the assignee). We attribute by createdById to
- * reflect who did the reflection; adjust here if attribution should change.
+ * toward the member when they're the assignee). Deduplication prevents a task
+ * from counting twice when both conditions match. These are work mappings,
+ * not automatic grades or completion judgments.
  */
 export async function computeAlignment(q: AlignmentQuery): Promise<AlignmentResult> {
-  const where: any = { createdById: q.userId }
+  const where: any = { OR: [{ createdById: q.userId }, { ticket: { assigneeId: q.userId } }] }
   if (q.from || q.to) {
     where.createdAt = {}
     if (q.from) where.createdAt.gte = q.from

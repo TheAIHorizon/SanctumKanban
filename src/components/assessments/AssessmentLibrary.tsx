@@ -13,10 +13,17 @@ export async function downloadCanvas(body: { classId: string; ids?: string[]; la
   link.download = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') || '')?.[1] || 'sanctum-canvas.zip'
   document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 30_000)
 }
-export function AssessmentLibrary({ staff, classId, students, refresh, selectedId, onSelect }: { staff: boolean; classId: string; students: { id: string; name: string }[]; refresh: number; selectedId: string | null; onSelect: (a: AssessmentSummary) => void }) {
+export async function deleteFailedAttempts(body: { classId: string; id?: string; allFailed?: true }) {
+  const response = await fetch('/api/assessments/failed', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const result = await response.json()
+  if (!response.ok) throw new Error(result.error || 'Could not delete failed attempts.')
+  return result.deleted as number
+}
+export function AssessmentLibrary({ staff, classId, students, refresh, selectedId, onSelect, onDeleted, className, archived }: { staff: boolean; classId: string; students: { id: string; name: string }[]; refresh: number; selectedId: string | null; onSelect: (a: AssessmentSummary) => void; onDeleted: () => void; className?: string; archived?: boolean }) {
   const [studentId, setStudentId] = useState(''), [mode, setMode] = useState(''), [status, setStatus] = useState(''), [search, setSearch] = useState('')
   const [page, setPage] = useState(1), [items, setItems] = useState<AssessmentSummary[]>([]), [total, setTotal] = useState(0)
   const [selected, setSelected] = useState<string[]>([]), [error, setError] = useState(''), [loadError, setLoadError] = useState(''), [loading, setLoading] = useState(false), [exporting, setExporting] = useState(false)
+  const [deleting, setDeleting] = useState(false), [notice, setNotice] = useState('')
   const [format, setFormat] = useState('qti'), [points, setPoints] = useState(4)
   useEffect(() => {
     if (!classId) return
@@ -40,19 +47,30 @@ export function AssessmentLibrary({ staff, classId, students, refresh, selectedI
     try { await downloadCanvas({ classId, ...(latestApproved ? { latestApproved: true } : { ids: selected }), format, points }) }
     catch (e) { setError((e as Error).message) } finally { setExporting(false) }
   }
+  async function clearFailed() {
+    if (!window.confirm(`Permanently delete ALL failed attempts in ${className || 'this class'}? This includes all students and assessment types, regardless of library filters. Successful and running assessments and student work will be kept. This cannot be undone.`)) return
+    setDeleting(true); setError(''); setNotice('')
+    try {
+      const count = await deleteFailedAttempts({ classId, allFailed: true })
+      setPage(1); setNotice(`Deleted ${count} failed attempt${count === 1 ? '' : 's'}.`); onDeleted()
+    } catch (e) { setError((e as Error).message) } finally { setDeleting(false) }
+  }
   const eligible = items.filter(exportable)
   return <section aria-label="Assessment library" className="space-y-3 rounded border p-4">
     <h2 className="text-xl font-semibold">{staff ? 'Assessment library' : 'Saved versions'}</h2>
     <p className="text-sm text-muted-foreground">{staff ? 'Every version is saved in the Kanban database. Browse all pages to see the complete history for the selected course, or all courses.' : 'Your practice versions are saved in the Kanban database. Browse all pages to see your history for the selected course.'}</p>
+    <p className="text-sm">Choose <strong>Open assessment</strong> to jump to its questions and available actions below the library. Checkboxes select versions for batch export.</p>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {staff && <><label>History for student<select className={field} value={studentId} onChange={e => filter(setStudentId, e.target.value)}><option value="">All students</option>{students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>Assessment type<select className={field} value={mode} onChange={e => filter(setMode, e.target.value)}><option value="">All types</option><option value="EXAM">Instructor exams</option><option value="PRACTICE">Practice tests</option></select></label></>}
       <label>Assessment status<select className={field} value={status} onChange={e => filter(setStatus, e.target.value)}><option value="">All statuses</option>{['QUEUED', 'GENERATING', 'READY', 'APPROVED', 'FAILED'].map(s => <option key={s}>{s}</option>)}</select></label>
       <label>{staff ? 'Search student or version' : 'Search version'}<input className={field} value={search} onChange={e => filter(setSearch, e.target.value)} /></label>
     </div>
+    {staff && <div className="space-y-2"><Button variant="outline" disabled={deleting || !classId || classId === 'all' || archived} onClick={clearFailed}>Delete failed attempts for this class</Button><p className="text-sm text-muted-foreground">Choose a specific active course to permanently clear its failed attempts across all students and pages, regardless of the library filters. Successful and running assessments are kept.</p></div>}
+    {notice && <p role="status">{notice}</p>}
     {(error || loadError) && <p role="alert" className="text-destructive">{error || loadError}</p>}
     <p aria-live="polite">{loading ? 'Loading assessments…' : `${total} saved version${total === 1 ? '' : 's'} · Page ${page} of ${Math.max(1, Math.ceil(total / 25))}`}</p>
     <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left">{staff && <th className="p-2"><input type="checkbox" aria-label="Select exportable assessments on this page" disabled={!eligible.length} checked={!!eligible.length && eligible.every(a => selected.includes(a.id))} onChange={e => setSelected(e.target.checked ? Array.from(new Set([...selected, ...eligible.map(a => a.id)])).slice(0, 100) : selected.filter(id => !eligible.some(a => a.id === id)))} /></th>}<th className="p-2">Student / course</th><th className="p-2">Version / status</th><th className="p-2">Work range</th><th className="p-2">Practice score</th></tr></thead>
-      <tbody>{items.map(a => <tr key={a.id} className="border-b align-top">{staff && <td className="p-2"><input type="checkbox" aria-label={`Select ${a.student.firstName} ${a.student.lastName} ${a.id}`} disabled={!exportable(a) || (!selected.includes(a.id) && selected.length >= 100)} checked={selected.includes(a.id)} onChange={e => setSelected(s => e.target.checked ? [...s, a.id] : s.filter(id => id !== a.id))} /></td>}<td className="p-2">{a.student.firstName} {a.student.lastName}<p className="text-xs text-muted-foreground">{a.classWorkspace.name}</p></td><td className="p-2"><Button variant={selectedId === a.id ? 'secondary' : 'outline'} onClick={() => onSelect(a)}>{new Date(a.createdAt).toLocaleString()} · {a.mode === 'EXAM' ? 'Exam' : 'Practice'} · {a.status}</Button><p className="mt-1 text-xs text-muted-foreground break-all">{a.id}</p></td><td className="p-2 whitespace-nowrap">{a.from}<br />through {a.to}</td><td className="p-2">{a.score == null ? '—' : `${a.score}/25`}</td></tr>)}</tbody></table></div>
+      <tbody>{items.map(a => <tr key={a.id} className="border-b align-top">{staff && <td className="p-2"><input type="checkbox" aria-label={`Select ${a.student.firstName} ${a.student.lastName} ${a.id}`} disabled={!exportable(a) || (!selected.includes(a.id) && selected.length >= 100)} checked={selected.includes(a.id)} onChange={e => setSelected(s => e.target.checked ? [...s, a.id] : s.filter(id => id !== a.id))} /></td>}<td className="p-2">{a.student.firstName} {a.student.lastName}<p className="text-xs text-muted-foreground">{a.classWorkspace.name}</p></td><td className="p-2"><Button variant={selectedId === a.id ? 'secondary' : 'outline'} className="h-auto whitespace-normal text-left" onClick={() => onSelect(a)}>Open assessment · {new Date(a.createdAt).toLocaleString()} · {a.mode === 'EXAM' ? 'Exam' : 'Practice'} · {a.status}</Button><p className="mt-1 text-xs text-muted-foreground break-all">{a.id}</p></td><td className="p-2 whitespace-nowrap">{a.from}<br />through {a.to}</td><td className="p-2">{a.score == null ? '—' : `${a.score}/25`}</td></tr>)}</tbody></table></div>
     {!loading && !items.length && <p>No saved assessments match these filters.</p>}
     <div className="flex gap-2"><Button variant="outline" disabled={page <= 1 || loading} onClick={() => setPage(p => p - 1)}>Previous page</Button><Button variant="outline" disabled={page * 25 >= total || loading} onClick={() => setPage(p => p + 1)}>Next page</Button></div>
     {staff && <div className="space-y-3 border-t pt-4"><h3 className="font-semibold">Export to Canvas</h3><p className="text-sm">Select a specific course above for batch downloads, then select accepted exams or ready practice tests. Draft exams must be accepted first. Class export chooses the latest accepted exam for each student in this course, independently of the filters above.</p>

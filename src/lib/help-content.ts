@@ -20,6 +20,23 @@ export interface HelpGuide {
 
 export const HELP_GUIDES = [
   {
+    slug: 'student-work-reports',
+    title: 'Student work-role reports',
+    description: 'See tasks grouped by work role, completion, technical/policy focus, and the activity timeline.',
+    audience: 'authenticated',
+    sections: [
+      { heading: 'Read work roles and tasks', blocks: [
+        { type: 'paragraph', text: 'Open Reports and select a student. Work roles and tasks lists roles in descending order of distinct DCWF task count, with role code as a tie-breaker. Each task includes its ID, wording, Core/Additional mapping, linked tickets, current statuses and task notes. A repeated task counts once per role; a task mapped to several roles appears under each. The timeline remains below.' },
+      ] },
+      { heading: 'Understand completion and work focus', blocks: [
+        { type: 'paragraph', text: 'Reports include DCWF links recorded by the student and links on tickets currently assigned to them, including links an instructor added. Completed tasks have at least one linked Done ticket; check the listed tickets for remaining work. Work focus describes technical, policy/governance, mixed or unclassified task wording using local keyword rules. It is not an official DCWF classification, difficulty rating or automatic grade. The report also counts linked tickets by status and whether they have task notes. It does not infer pentest performance or final-assessment results.' },
+      ] },
+      { heading: 'Filter and export', blocks: [
+        { type: 'paragraph', text: 'Course roles only limits the grouped roles and work-focus summary to the predefined course-relevant DCWF roles. Clear it to include all mapped roles. The existing weighted alignment chart is separate: its percentages use Core/Additional weights, not completion or grades. Export HTML includes the same role groups and work-focus summary. A task without any matching role is still visible in the task log. No AI request is made to generate this report.' },
+      ] },
+    ],
+  },
+  {
     slug: 'requests-and-bugs',
     title: 'Feature requests and bug reports',
     description: 'Suggest improvements, report problems, and track staff responses.',
@@ -63,10 +80,13 @@ export const HELP_GUIDES = [
         { type: 'paragraph', text: 'Inspect the evidence snapshot and question sources, edit any question, options, correct answer or explanation, and save your edits. You may also accept the generated default directly. Accept exam freezes that version and records whether it was edited or accepted unchanged. AI correctness is not guaranteed by acceptance.' },
       ] },
       { heading: 'Find every saved assessment', blocks: [
-        { type: 'paragraph', text: 'Assessments are saved in the Kanban database. Open Assessments and use the Assessment library. Choose All courses or a specific course, then filter by student, type or status, or search by student name or version ID. Previous page and Next page show the complete history, including failed generations. Staff can still read historical versions after a student leaves a class. Students see only their own practice tests in courses they can access.' },
+        { type: 'paragraph', text: 'Assessments are saved in the Kanban database. Open Assessments and use the Assessment library. Choose All courses or a specific course, then filter by student, type or status, or search by student name or version ID. Choose Open assessment beside a version to jump to its questions below the library. The checkboxes select versions for batch export; they do not open a test. Review, accept, print and Canvas export controls appear above the questions when available. Previous page and Next page show the complete history, including failed generations. Staff can still read historical versions after a student leaves a class. Students see only their own practice tests in courses they can access.' },
+      ] },
+      { heading: 'Delete failed attempts', blocks: [
+        { type: 'paragraph', text: 'Instructional staff can open a FAILED version and choose Delete failed attempt. To clean up a class, select its Course and choose Delete failed attempts for this class in the library. Confirm to permanently remove failed versions, including their error messages and evidence snapshots. The class action includes all students, assessment types and pages, regardless of library filters. Successful and running assessments, student accounts and original ticket work are kept. Archived courses must be restored before cleanup. Deleted attempts no longer appear in history.' },
       ] },
       { heading: 'Download for Canvas', blocks: [
-        { type: 'paragraph', text: 'Open an accepted exam or ready practice test and choose Export Canvas quiz for a single QTI ZIP, using four points per question (100 total). For class downloads, choose a specific course in the library. Select versions across pages, or choose Export latest accepted exams for class to include one accepted exam per student. That class button uses the whole selected course, not the library filters. Downloads are limited to 100 quizzes each. Exam drafts must be accepted before export; queued and failed versions cannot be exported.' },
+        { type: 'paragraph', text: 'Open an accepted exam or ready practice test. Under Export this assessment, choose Classic Quizzes or New Quizzes and set Quiz points per question (1–100; default four, or 100 total). Choose Export Canvas quiz to download the ZIP. Both engines use the same single-quiz QTI file; the selected type shows the matching Canvas import instructions. For class downloads, choose a specific course in the library. Select versions across pages, or choose Export latest accepted exams for class to include one accepted exam per student. That class button uses the whole selected course, not the library filters. Downloads are limited to 100 quizzes each. Exam drafts must be accepted before export; queued and failed versions cannot be exported.' },
         { type: 'paragraph', text: 'Classic Quizzes: choose the combined QTI package, then in Canvas use Course Settings > Import Course Content > QTI .zip file. New Quizzes: choose individual quiz ZIPs in a bundle, extract that outer bundle, create a new quiz shell for each assessment, and use Build > Options > Import Content to import its individual ZIP. The single-quiz download works in either engine. Each bundle includes instructions and a quiz index.' },
       ] },
       { heading: 'Assign and grade in Canvas', blocks: [

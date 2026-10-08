@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Target, Activity, ClipboardList, ArrowLeft, Download } from 'lucide-react'
 import Link from 'next/link'
+import { WorkRoleBreakdown } from './WorkRoleBreakdown'
+import type { WorkRoleReport } from '@/lib/report-work-roles'
 import { formatDateTime, getInitials } from '@/lib/utils'
 
 // Stable colors per DCWF element (fallbacks to gray)
@@ -21,6 +23,7 @@ const ELEMENT_COLORS: Record<string, string> = {
 const elColor = (name: string | null) => (name && ELEMENT_COLORS[name]) || '#9ca3af'
 
 interface ReportData {
+  workRoleReport: WorkRoleReport
   user: {
     id: string
     firstName: string
@@ -73,15 +76,17 @@ export function UserReport({ userId }: { userId: string }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setLoading(true)
-    fetch(`/api/users/${userId}/report?inScopeOnly=${inScopeOnly}`)
+    const controller = new AbortController()
+    setLoading(true); setError('')
+    fetch(`/api/users/${userId}/report?inScopeOnly=${inScopeOnly}`, { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error || 'Failed to load report')
         return res.json()
       })
-      .then(setData)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
+      .then(value => { if (!controller.signal.aborted) setData(value) })
+      .catch((e) => { if (!controller.signal.aborted) setError(e.message) })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
   }, [userId, inScopeOnly])
 
   if (loading) {
@@ -101,7 +106,7 @@ export function UserReport({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Link href="/reports" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-5 w-5" />
         </Link>
@@ -138,7 +143,9 @@ export function UserReport({ userId }: { userId: string }) {
         </a>
       </div>
 
-      {/* Alignment — the centerpiece */}
+      <WorkRoleBreakdown report={data.workRoleReport} />
+
+      {/* Weighted alignment complements the task-count breakdown. */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">

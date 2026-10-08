@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { computeAlignment } from '@/lib/dcwf-alignment'
+import { buildWorkRoleReport } from '@/lib/report-work-roles'
 
 // GET /api/users/[id]/report?teamId=&from=&to=&inScopeOnly=true
 // Full per-student report: profile, activity timeline, logged DCWF tasks (with
@@ -101,7 +102,7 @@ export async function GET(
     })
 
     // Logged DCWF tasks with reflection notes
-    const taskLinkWhere: any = { createdById: targetId }
+    const taskLinkWhere: any = { OR: [{ createdById: targetId }, { ticket: { assigneeId: targetId } }] }
     if (from || to) {
       taskLinkWhere.createdAt = {}
       if (from) taskLinkWhere.createdAt.gte = from
@@ -116,7 +117,7 @@ export async function GET(
         id: true,
         note: true,
         createdAt: true,
-        ticket: { select: { id: true, title: true, team: { select: { name: true } } } },
+        ticket: { select: { id: true, title: true, status: true, team: { select: { name: true } } } },
         ksat: {
           select: {
             ksatId: true,
@@ -135,7 +136,7 @@ export async function GET(
     // Alignment
     const alignment = await computeAlignment({ userId: targetId, teamId, from, to, inScopeOnly })
 
-    return NextResponse.json({ user, timeline, taskLinks, alignment })
+    return NextResponse.json({ user, timeline, taskLinks, alignment, workRoleReport: buildWorkRoleReport(taskLinks, inScopeOnly) }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     console.error('Failed to build user report:', error)
     return NextResponse.json({ error: 'Failed to build report' }, { status: 500 })

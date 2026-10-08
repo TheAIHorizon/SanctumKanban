@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { AssessmentLibrary, downloadCanvas } from './AssessmentLibrary'
+import { AssessmentLibrary, downloadCanvas, deleteFailedAttempts } from './AssessmentLibrary'
 import type { AssessmentQuestion } from '@/lib/assessments'
 
 type Question = Omit<AssessmentQuestion, 'correctIndex' | 'explanation' | 'sourceIds'> & Partial<Pick<AssessmentQuestion, 'correctIndex' | 'explanation' | 'sourceIds'>>
@@ -21,9 +21,15 @@ export function Assessments({ staff, userId, classes }: { staff: boolean; userId
   const [versions, setVersions] = useState<Version[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<Detail | null>(null)
+  const detailPanel = useRef<HTMLElement>(null)
+  const [openRequest, setOpenRequest] = useState(0)
+  const [detailError, setDetailError] = useState('')
   const [answers, setAnswers] = useState<number[]>(Array(25).fill(-1))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [exportEngine, setExportEngine] = useState('classic')
+  const [exportPoints, setExportPoints] = useState(4)
+  const [notice, setNotice] = useState('')
   const [refresh, setRefresh] = useState(0)
   useEffect(() => {
     setDetail(null); setSelectedId(null); setVersions([]); setError('')
@@ -37,6 +43,14 @@ export function Assessments({ staff, userId, classes }: { staff: boolean; userId
   }, [classId, studentId, refresh])
   useEffect(() => {
     if (!selectedId) return
+    // Repeat after the questions arrive: the short loading panel may be too near
+    // the page bottom to scroll to the top. Polling the same version never jumps.
+    detailPanel.current?.focus({ preventScroll: true })
+    detailPanel.current?.scrollIntoView({ block: 'start' })
+  }, [selectedId, openRequest, detail?.id])
+  useEffect(() => {
+    if (!selectedId) return
+    setDetailError('')
     let canceled = false, timer: ReturnType<typeof setTimeout> | undefined
     const load = async () => {
       try {
@@ -44,16 +58,38 @@ export function Assessments({ staff, userId, classes }: { staff: boolean; userId
         if (canceled) return
         setDetail(value); setAnswers(value.answers || Array(25).fill(-1))
         if (['QUEUED', 'GENERATING'].includes(value.status)) timer = setTimeout(load, 5000)
-      } catch (e) { if (!canceled) setError((e as Error).message) }
+      } catch (e) { if (!canceled) setDetailError((e as Error).message) }
     }
     void load()
     return () => { canceled = true; if (timer) clearTimeout(timer) }
-  }, [selectedId])
+  }, [selectedId, openRequest])
+  function openAssessment(id: string) {
+    setError('')
+    if (id === selectedId && detail) {
+      // Returning to the open version must preserve unsaved question edits/answers.
+      detailPanel.current?.focus({ preventScroll: true })
+      detailPanel.current?.scrollIntoView({ block: 'start' })
+      return
+    }
+    setDetail(null); setDetailError(''); setSelectedId(id); setOpenRequest(n => n + 1)
+  }
   async function exportSelectedTest() {
     if (!detail) return
     setBusy(true); setError('')
-    try { await downloadCanvas({ classId: detail.classWorkspaceId, ids: [detail.id], format: 'qti', points: 4 }) }
+    try { await downloadCanvas({ classId: detail.classWorkspaceId, ids: [detail.id], format: 'qti', points: exportPoints }) }
     catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+  }
+  function deletedFailed() {
+    if (detail?.status === 'FAILED') { setDetail(null); setSelectedId(null); setDetailError('') }
+    setRefresh(n => n + 1)
+  }
+  async function deleteCurrentFailed() {
+    if (!detail || !window.confirm('Permanently delete this failed attempt? Its error and saved evidence snapshot will be removed. Student work and other assessments will be kept. This cannot be undone.')) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      await deleteFailedAttempts({ classId: detail.classWorkspaceId, id: detail.id })
+      deletedFailed(); setNotice('Failed attempt deleted.')
+    } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
   }
   async function generate() {
     setBusy(true); setError('')
@@ -80,15 +116,36 @@ export function Assessments({ staff, userId, classes }: { staff: boolean; userId
       {staff && !course && <p>Choose a specific course to generate a test or download a class batch. The library below can browse all courses.</p>}
       {course?.archived && <p>Archived course: saved tests are read only.</p>}
     </div>
-    {error && <p role="alert" className="text-destructive">{error}</p>}
-    <AssessmentLibrary key={classId} staff={staff} classId={classId} students={course?.historyStudents || Array.from(new Map(classes.flatMap(c => c.historyStudents).map(s => [s.id, s])).values())} refresh={refresh} selectedId={selectedId} onSelect={a => { if (a.id !== selectedId) setDetail(null); setSelectedId(a.id); setError('') }} />
-    {detail && <section className="space-y-4" aria-label="Selected test">
+    {notice && <p role="status">{notice}</p>}
+    {!selectedId && error && <p role="alert" className="text-destructive">{error}</p>}
+    <AssessmentLibrary key={classId} staff={staff} classId={classId} students={course?.historyStudents || Array.from(new Map(classes.flatMap(c => c.historyStudents).map(s => [s.id, s])).values())} refresh={refresh} selectedId={selectedId} onSelect={a => openAssessment(a.id)} onDeleted={deletedFailed} className={course?.name} archived={course?.archived} />
+    {selectedId && <section ref={detailPanel} tabIndex={-1} className="space-y-4 scroll-mt-24 rounded border p-4" aria-label="Selected test" aria-busy={!detail && !detailError}>
+      {error && <p role="alert" className="text-destructive">{error}</p>}
+      {detailError && <div role="alert"><p className="text-destructive">Could not load this assessment: {detailError}</p><Button variant="outline" onClick={() => { setDetailError(''); setOpenRequest(n => n + 1) }}>Retry opening assessment</Button></div>}
+      {!detail && !detailError && <p role="status">Opening assessment…</p>}
+      {detail && <>
       <h2 className="text-xl font-semibold">{detail.mode === 'EXAM' ? 'Instructor exam' : 'Practice test'} · {detail.status}</h2>
       <p className="font-medium">{detailCourse?.historyStudents.find(s => s.id === detail.studentId)?.name || detailCourse?.students.find(s => s.id === detail.studentId)?.name}</p>
       <p className="text-sm">Work range: {detail.from} through {detail.to} · Version {detail.id}</p>
       {['QUEUED', 'GENERATING'].includes(detail.status) && <><p role="status">{detail.status === 'QUEUED' ? 'Queued for the local assessment worker.' : 'Creating and validating 25 questions.'} This can take several minutes. You can leave this page and return. If this stays queued, the operator needs to start the assessment worker.</p>{!detailCourse?.archived && <Button variant="outline" disabled={busy} onClick={() => act('cancel')}>Cancel generation</Button>}</>}
       {detail.error && <p role="status">{detail.error}</p>}
       {detail.submittedAt && <p className="font-semibold">Practice score: {detail.score}/25. Answers are now shown below.</p>}
+      {editable && <p>Review the questions below, then choose Accept exam to enable printing and Canvas export. You can save edits or accept the generated version.</p>}
+      {editable && <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => act('save')}>Save edits</Button><Button disabled={busy} onClick={() => act('approve')}>Accept exam</Button></div>}
+      {detail.status === 'APPROVED' && staff && <div><p>Accepted exam · {detail.approvalMethod === 'EDITED' ? 'Instructor edited' : 'Generated version accepted'}. This version is fixed; generate another to make changes.</p><div className="flex flex-wrap gap-3 mt-2"><Button asChild><a href={`/api/assessments/${detail.id}/export`} target="_blank" rel="noreferrer">Print student exam</a></Button><Button asChild variant="outline"><a href={`/api/assessments/${detail.id}/export?key=1`} target="_blank" rel="noreferrer">Print separate answer key</a></Button></div></div>}
+      {staff && (detail.status === 'APPROVED' && detail.mode === 'EXAM' || detail.status === 'READY' && detail.mode === 'PRACTICE') && <div className="space-y-3 rounded border p-3">
+        <h3 className="font-semibold">Export this assessment</h3>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label>Canvas quiz type<select className={field} value={exportEngine} onChange={e => setExportEngine(e.target.value)}><option value="classic">Classic Quizzes</option><option value="new">New Quizzes</option></select></label>
+          <label>Quiz points per question<input className={field} type="number" min={1} max={100} step={1} value={exportPoints} onChange={e => setExportPoints(Number(e.target.value))} /><span className="text-sm">{exportPoints * 25} points total</span></label>
+        </div>
+        <Button variant="outline" disabled={busy || !Number.isInteger(exportPoints) || exportPoints < 1 || exportPoints > 100} onClick={exportSelectedTest}>Export Canvas quiz ({exportPoints * 25} points)</Button>
+        <p className="text-sm">{exportEngine === 'classic' ? 'In Canvas: Course Settings → Import Course Content → QTI .zip file. Upload the downloaded ZIP.' : 'In Canvas: create a New Quiz → Build → Options → Import Content. Upload the downloaded ZIP.'} Both quiz types use the same single-quiz QTI ZIP. Assign the quiz only to this student before publishing.</p>
+        <p className="text-sm">For a class batch, use Export to Canvas in the library above. For PDF or paper copies of an accepted exam, choose Print student exam or Print separate answer key, then Save as PDF or print in your browser.</p>
+      </div>}
+      {detail.status === 'FAILED' && <p>This attempt did not produce a complete assessment and cannot be exported. Review the error above and generate a new version.</p>}
+      {staff && detail.status === 'FAILED' && !detailCourse?.archived && <Button variant="destructive" disabled={busy} onClick={deleteCurrentFailed}>Delete failed attempt</Button>}
+      {staff && <a className="inline-block underline text-sm" href="/help/instructor-exams">How to review, print, and import assessments into Canvas</a>}
       {detail.questions.map((q, i) => <fieldset className="rounded border p-4 space-y-2" key={i}><legend className="px-2 font-semibold">Question {i + 1} · {q.kind}</legend>
         {editable ? <label>Question {i + 1} text<textarea aria-label={`Question ${i + 1} text`} className={field} value={q.stem} onChange={e => edit(i, { stem: e.target.value })} /></label> : <p className="font-medium">{q.stem}</p>}
         {q.options.map((o, j) => editable ? <label key={j}>Option {'ABCD'[j]}<input className={field} value={o} onChange={e => edit(i, { options: q.options.map((v, k) => k === j ? e.target.value : v) })} /></label> : <label key={j} className="block"><input type="radio" name={`question-${i}`} checked={answers[i] === j} onChange={() => setAnswers(a => a.map((v, k) => k === i ? j : v))} disabled={!!detail.submittedAt || detail.mode === 'EXAM' || staff && detail.studentId !== userId || detailCourse?.archived} /> <span>{'ABCD'[j]}. {o}</span></label>)}
@@ -96,10 +153,8 @@ export function Assessments({ staff, userId, classes }: { staff: boolean; userId
         {staff && q.sourceIds && <p className="text-xs text-muted-foreground">Based on: {q.sourceIds.map(id => detail.sources?.find(s => s.id === id)?.title || id).join('; ')}</p>}
       </fieldset>)}
       {detail.status === 'READY' && detail.mode === 'PRACTICE' && !detail.submittedAt && detail.studentId === userId && !detailCourse?.archived && <Button disabled={busy || answers.some(a => a < 0)} onClick={() => act('submit')}>Submit all 25 answers</Button>}
-      {editable && <div className="flex gap-2"><Button variant="outline" disabled={busy} onClick={() => act('save')}>Save edits</Button><Button disabled={busy} onClick={() => act('approve')}>Accept exam</Button></div>}
-      {detail.status === 'APPROVED' && staff && <div><p>Accepted exam · {detail.approvalMethod === 'EDITED' ? 'Instructor edited' : 'Generated version accepted'}. This version is fixed; generate another to make changes.</p><div className="flex gap-3 mt-2"><Button asChild><a href={`/api/assessments/${detail.id}/export`} target="_blank" rel="noreferrer">Print student exam</a></Button><Button asChild variant="outline"><a href={`/api/assessments/${detail.id}/export?key=1`} target="_blank" rel="noreferrer">Print separate answer key</a></Button></div></div>}
-      {staff && (detail.status === 'APPROVED' && detail.mode === 'EXAM' || detail.status === 'READY' && detail.mode === 'PRACTICE') && <div className="space-y-2"><Button variant="outline" disabled={busy} onClick={exportSelectedTest}>Export Canvas quiz (100 points)</Button><p className="text-sm">Single QTI ZIP for Classic or New Quizzes. For custom points or a class batch, use the library above. Assign the imported quiz to this student before publishing in Canvas.</p></div>}
       {staff && detail.sources && <details><summary className="cursor-pointer">Evidence snapshot and references</summary><p className="whitespace-pre-wrap">{detail.references || 'No instructor references supplied.'}</p>{detail.sources.map(s => <article key={s.id} className="border rounded p-3 my-2"><h3 className="font-semibold">{s.title}</h3><p>{s.contribution}</p><p className="whitespace-pre-wrap">{s.description}</p>{s.tasks.map(t => <p key={t.code}>{t.code}: {t.description} — {t.note}</p>)}</article>)}</details>}
+    </>}
     </section>}
   </div>
 }
